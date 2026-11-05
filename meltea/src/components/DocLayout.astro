@@ -1,0 +1,50 @@
+---
+import Ornament from "./Ornament.astro";
+
+interface Props {
+  toc: { id: string; label: string }[];
+}
+
+const { toc } = Astro.props;
+---
+
+<div class="wrap grid gap-12 py-16 sm:py-20 lg:grid-cols-[13.5rem_minmax(0,1fr)] lg:gap-16">
+  <nav class="hidden lg:block" aria-label="On this page">
+    <div class="sticky top-28">
+      <p class="eyebrow"><Ornament kind="tulip" class="h-5 w-4" />On this page</p>
+      <ol class="mt-5 space-y-0.5 border-l border-line">
+        {
+          toc.map((entry) => (
+            <li>
+              <a
+                href={`#${entry.id}`}
+                data-toc={entry.id}
+                class="-ml-px block border-l-2 border-transparent py-1.5 pl-4 text-sm text-ink-3 transition-colors hover:text-ink aria-[current=true]:border-brass aria-[current=true]:text-ink"
+              >
+                {entry.label}
+              </a>
+            </li>
+          ))
+        }
+      </ol>
+    </div>
+  </nav>
+  <div class="min-w-0 max-w-3xl">
+    <slot />
+  </div>
+</div>
+
+<script>
+  const links = [...document.querySelectorAll<HTMLAnchorElement>("[data-toc]")];
+  const observer = new IntersectionObserver(
+    (entries) =>
+      entries
+        .filter((entry) => entry.isIntersecting)
+        .forEach((entry) => links.forEach((link) => link.setAttribute("aria-current", String(link.dataset.toc === entry.target.id)))),
+    { rootMargin: "-30% 0px -60% 0px" },
+  );
+  links.forEach((link) => {
+    const target = document.getElementById(link.dataset.toc ?? "");
+    if (target) observer.observe(target);
+  });
+</script>

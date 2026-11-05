@@ -1,0 +1,65 @@
+---
+interface Props {
+  kind: "tulip" | "glass" | "rosette" | "divider";
+  class?: string;
+}
+
+const { kind, class: className } = Astro.props;
+const petals = [0, 45, 90, 135, 180, 225, 270, 315];
+---
+
+{
+  kind === "tulip" && (
+    <svg class:list={["shrink-0", className]} viewBox="0 0 24 32" aria-hidden="true">
+      <path d="M12 3C9.5 6 7 7.5 6 12C5.2 15.6 7.8 19 12 19C16.2 19 18.8 15.6 18 12C17 7.5 14.5 6 12 3Z" style="fill: var(--coral)" />
+      <path d="M12 7C10.6 9.5 10.2 13 12 19C13.8 13 13.4 9.5 12 7Z" style="fill: var(--card)" opacity="0.55" />
+      <path d="M6 12C4.5 9.5 4.6 7.2 5.4 5.6C7.6 7.4 8.6 9.6 8.4 12" style="fill: var(--coral)" opacity="0.85" />
+      <path d="M18 12C19.5 9.5 19.4 7.2 18.6 5.6C16.4 7.4 15.4 9.6 15.6 12" style="fill: var(--coral)" opacity="0.85" />
+      <path d="M12 19V31" style="stroke: var(--turquoise)" stroke-width="1.6" stroke-linecap="round" />
+      <path d="M12 27C9.5 26.5 7.5 24.5 7 21.5C9.8 22 11.6 24 12 27Z" style="fill: var(--turquoise)" />
+    </svg>
+  )
+}
+{
+  kind === "glass" && (
+    <svg class:list={["shrink-0", className]} viewBox="0 0 20 28" aria-hidden="true">
+      <defs>
+        <linearGradient id="glass-brass" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#e8590c" />
+          <stop offset="1" stop-color="#a61e1e" />
+        </linearGradient>
+      </defs>
+      <path d="M3 2H17C17 7 12.6 9 12.6 12.5C12.6 16 17 18 17 23H3C3 18 7.4 16 7.4 12.5C7.4 9 3 7 3 2Z" style="stroke: var(--brass)" fill="none" stroke-width="1.2" />
+      <path d="M4.6 7H15.4C14.2 9 12.6 10.4 12.6 12.5C12.6 16 17 18 17 23H3C3 18 7.4 16 7.4 12.5C7.4 10.4 5.8 9 4.6 7Z" fill="url(#glass-brass)" />
+      <ellipse cx="10" cy="25.5" rx="9" ry="1.8" style="fill: var(--brass)" />
+    </svg>
+  )
+}
+{
+  kind === "rosette" && (
+    <svg class:list={["shrink-0", className]} viewBox="-20 -20 40 40" aria-hidden="true">
+      <path d="M-11-11H11V11H-11Z" style="fill: var(--azure)" opacity="0.15" />
+      <path d="M-11-11H11V11H-11Z" transform="rotate(45)" style="fill: var(--azure)" opacity="0.15" />
+      <path d="M-11-11H11V11H-11Z" style="stroke: var(--azure)" fill="none" stroke-width="1.2" />
+      <path d="M-11-11H11V11H-11Z" transform="rotate(45)" style="stroke: var(--azure)" fill="none" stroke-width="1.2" />
+      {petals.map((angle) => <path d="M0-9C2-6.5 2-4 0-2.5C-2-4-2-6.5 0-9Z" transform={`rotate(${angle})`} style="fill: var(--turquoise)" />)}
+      <circle r="2.4" style="fill: var(--coral)" />
+    </svg>
+  )
+}
+{
+  kind === "divider" && (
+    <div class:list={["flex items-center gap-4", className]} aria-hidden="true">
+      <span class="h-px flex-1 bg-gradient-to-r from-transparent via-line-strong to-line-strong" />
+      <span class="h-1.5 w-1.5 rotate-45 bg-brass" />
+      <svg class="h-9 w-9 shrink-0" viewBox="-20 -20 40 40">
+        <path d="M-11-11H11V11H-11Z" style="stroke: var(--brass)" fill="none" stroke-width="1.2" />
+        <path d="M-11-11H11V11H-11Z" transform="rotate(45)" style="stroke: var(--brass)" fill="none" stroke-width="1.2" />
+        {petals.map((angle) => <path d="M0-9C2-6.5 2-4 0-2.5C-2-4-2-6.5 0-9Z" transform={`rotate(${angle})`} style="fill: var(--azure)" />)}
+        <circle r="2.4" style="fill: var(--coral)" />
+      </svg>
+      <span class="h-1.5 w-1.5 rotate-45 bg-brass" />
+      <span class="h-px flex-1 bg-gradient-to-l from-transparent via-line-strong to-line-strong" />
+    </div>
+  )
+}

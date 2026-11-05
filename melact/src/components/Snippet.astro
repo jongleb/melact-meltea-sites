@@ -1,0 +1,49 @@
+---
+import { Code } from "astro:components";
+
+interface Props {
+  code: string;
+  lang: "ocaml" | "js" | "css" | "diff" | "console" | "scheme" | "plaintext";
+  title?: string;
+  class?: string;
+}
+
+const { code, lang, title, class: className } = Astro.props;
+---
+
+<div class:list={["snippet group/snippet relative overflow-hidden rounded-2xl border border-line bg-code", className]}>
+  <div class="flex items-center justify-between gap-3 border-b border-line px-4 py-2.5">
+    <div class="flex min-w-0 items-center gap-2.5">
+      <span class="flex gap-1.5" aria-hidden="true">
+        <span class="h-2.5 w-2.5 rounded-full bg-line-strong"></span>
+        <span class="h-2.5 w-2.5 rounded-full bg-line-strong"></span>
+        <span class="h-2.5 w-2.5 rounded-full bg-line-strong"></span>
+      </span>
+      <span class="truncate font-mono text-xs text-ink-3">{title ?? lang}</span>
+    </div>
+    <button
+      type="button"
+      data-copy
+      class="rounded-md px-2 py-1 font-mono text-[0.7rem] text-ink-3 transition-colors hover:bg-bg-sunk hover:text-ink"
+      aria-label="Copy code"
+    >copy</button>
+  </div>
+  <Code
+    code={code}
+    lang={lang}
+    themes={{ light: "github-light", dark: "github-dark" }}
+    class="overflow-x-auto px-4 py-4 sm:px-5"
+  />
+  <textarea data-source hidden aria-hidden="true" tabindex="-1" set:text={code} />
+</div>
+
+<script>
+  document.querySelectorAll<HTMLButtonElement>("[data-copy]").forEach((button) => {
+    button.addEventListener("click", async () => {
+      const source = button.closest(".snippet")?.querySelector<HTMLTextAreaElement>("[data-source]")?.value ?? "";
+      await navigator.clipboard.writeText(source);
+      button.textContent = "copied";
+      setTimeout(() => (button.textContent = "copy"), 1400);
+    });
+  });
+</script>

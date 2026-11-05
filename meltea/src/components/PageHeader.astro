@@ -1,0 +1,25 @@
+---
+import Ornament from "./Ornament.astro";
+
+interface Props {
+  eyebrow: string;
+  title: string;
+}
+
+const { eyebrow, title } = Astro.props;
+---
+
+<section class="relative overflow-hidden">
+  <div class="glow pointer-events-none absolute inset-0" aria-hidden="true"></div>
+  <div class="girih pointer-events-none absolute inset-0" aria-hidden="true"></div>
+  <div class="wrap relative pt-16 pb-14 sm:pt-24 sm:pb-20">
+    <p class="eyebrow"><Ornament kind="tulip" class="h-5 w-4" />{eyebrow}</p>
+    <h1 class="display mt-4 max-w-4xl text-[2.9rem] leading-[1.02] text-balance sm:text-[4.4rem]">{title}</h1>
+    <div class="lede mt-6 max-w-2xl">
+      <slot />
+    </div>
+    <div class="mt-8 flex flex-wrap gap-3">
+      <slot name="actions" />
+    </div>
+  </div>
+</section>

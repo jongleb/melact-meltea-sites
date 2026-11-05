@@ -1,0 +1,22 @@
+---
+interface Props {
+  count: number;
+}
+
+const { count } = Astro.props;
+const stars = Array.from({ length: count }, (_, index) => {
+  const seed = Math.sin(index * 12.9898 + count * 78.233) * 43758.5453;
+  const unit = seed - Math.floor(seed);
+  const other = (Math.sin(index * 4.1414 + 1.7) * 9301.17) % 1;
+  return {
+    x: (unit * 100).toFixed(2),
+    y: (Math.abs(other) * 62).toFixed(2),
+    r: (0.6 + ((index * 7) % 5) * 0.22).toFixed(2),
+    delay: `${((index * 0.37) % 3.4).toFixed(2)}s`,
+  };
+});
+---
+
+<svg class="stars pointer-events-none absolute inset-0 h-full w-full" aria-hidden="true">
+  {stars.map((star) => <circle class="twinkle" cx={`${star.x}%`} cy={`${star.y}%`} r={star.r} fill="#f5ecdc" style={{ animationDelay: star.delay }} />)}
+</svg>

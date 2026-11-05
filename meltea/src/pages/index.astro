@@ -1,0 +1,499 @@
+---
+import { withBase } from "../data/paths";
+import Base from "../layouts/Base.astro";
+import Figure from "../components/Figure.astro";
+import Snippet from "../components/Snippet.astro";
+import SectionHead from "../components/SectionHead.astro";
+import BenchChart from "../components/BenchChart.astro";
+import Ornament from "../components/Ornament.astro";
+import { melteaCounter, melteaCompiled, fanoutAlert, transitionView, servedDune, melteaUse, melteaPin } from "../data/samples";
+
+const stats = [
+  { value: "×1.15", label: "of hand-written vanilla JS, geometric mean of nine keyed operations", note: "React 18: ×1.70" },
+  { value: "9.0 kB", label: "gzip JavaScript of the whole benchmark app", note: "React 18: 45.6 kB" },
+  { value: "3.0 kB", label: "gzip for the counter app, runtime and Melange stdlib included", note: "TodoMVC: 14.7 kB" },
+  { value: "2", label: "DOM moves to swap two rows of 1,000", note: "React moves 998" },
+];
+
+const loop = [
+  { name: "Model", code: "count", text: "Any OCaml value. Immutable, so an unchanged reference is an unchanged value." },
+  { name: "Messages", code: "Increment | Decrement | Reset", text: "A variant. An event handler is a message, not a closure over state." },
+  { name: "update", code: "update message count", text: "A pure function from a message and the model to the next model." },
+  { name: "view", code: "view count", text: "A pure function in mlx, compiled into a template and a refresh." },
+];
+
+const writers = [
+  {
+    name: "Fields",
+    text: "The compiler reads update and view: which model fields each message can change, which fields the view reads. A message that changes nothing the view reads does not call it.",
+  },
+  {
+    name: "Fanout alerts",
+    text: "It follows each frequent event to the message it sends, the fields that message writes and the lists that read them. When typing would make a list check all its rows, it says so at the handler.",
+  },
+  {
+    name: "Remembered values",
+    text: "A derived let at the top of a view is computed again only when a field it reads changed; otherwise it is the same list, and the holes that read it are skipped.",
+  },
+];
+---
+
+<Base
+  title="Meltea: the Elm architecture for OCaml, compiled like Svelte"
+  description="A model, messages, a pure update and a pure view in mlx, compiled at build time into DOM templates with holes. No hooks, no components with state, no virtual DOM."
+>
+  <section class="relative overflow-hidden">
+    <div class="glow pointer-events-none absolute inset-0" aria-hidden="true"></div>
+    <div class="girih pointer-events-none absolute inset-0" aria-hidden="true"></div>
+    <div class="wrap relative grid items-center gap-12 pt-14 pb-20 sm:pt-20 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] lg:pt-20 lg:pb-24">
+      <div>
+        <p class="reveal eyebrow"><Ornament kind="tulip" class="h-5 w-4" />Hoş geldiniz · OCaml · Melange · mlx</p>
+        <h1 class="reveal display mt-5 text-[3.2rem] leading-[0.98] text-balance sm:text-[5rem]">
+          The Elm architecture for OCaml, <span class="accent-italic">compiled like Svelte.</span>
+        </h1>
+        <p class="reveal lede mt-7 max-w-xl">
+          A model, messages, a pure <code>update</code>, a pure <code>view</code>. No hooks, no components with state, no virtual DOM. The view is steeped at
+          build time into a DOM template with holes and a refresh that writes only what changed.
+        </p>
+        <div class="reveal mt-9 flex flex-wrap items-center gap-3">
+          <a href={withBase("/getting-started")} class="btn-primary">Get started <span aria-hidden="true">→</span></a>
+          <a href={withBase("/guide")} class="btn-ghost">Read the guide</a>
+        </div>
+      </div>
+
+      <div class="reveal relative mx-auto w-full max-w-[30rem] min-w-0" data-glass data-sign="positive" style="--level: 0.22">
+        <svg viewBox="0 0 480 760" class="relative h-auto w-full drop-shadow-[0_30px_40px_rgba(60,40,10,0.18)]" style="font-variant-ligatures: none" role="img" aria-labelledby="glass-title glass-desc">
+          <title id="glass-title">The glass is blown once. Every render just pours the tea.</title>
+          <desc id="glass-desc">At build time meltea-ppx turns the counter's mlx view into a template, parsed once and cloned per mount, with one hole: the output's text. At run time a click runs update, one check compares count with its last value, and one write sets the text node; there is no virtual DOM, tree diff, component tree, reconciler or scheduler.</desc>
+          <defs>
+            <pattern id="tile-light" width="18" height="18" patternUnits="userSpaceOnUse"><image href={withBase("/ornament/tile-light.svg")} width="18" height="18"></image></pattern>
+            <pattern id="tile-dark" width="18" height="18" patternUnits="userSpaceOnUse"><image href={withBase("/ornament/tile-dark.svg")} width="18" height="18"></image></pattern>
+            <pattern id="girih-light" width="48" height="48" patternUnits="userSpaceOnUse"><image href={withBase("/ornament/girih-light.svg")} width="48" height="48"></image></pattern>
+            <pattern id="girih-dark" width="48" height="48" patternUnits="userSpaceOnUse"><image href={withBase("/ornament/girih-dark.svg")} width="48" height="48"></image></pattern>
+            <linearGradient id="tea" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" stop-color="#e8590c"></stop>
+              <stop offset="1" stop-color="#a61e1e"></stop>
+            </linearGradient>
+            <clipPath id="glass-inside">
+              <path d="M189 292C190 328 213 350 213 380C213 410 194 434 194 470Q194 476 200 476H280Q286 476 286 470C286 434 267 410 267 380C267 350 290 328 291 292Z"></path>
+            </clipPath>
+            <marker id="tip" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M0,0 L10,5 L0,10 z" style="fill: var(--azure)"></path>
+            </marker>
+            <marker id="tip-coral" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M0,0 L10,5 L0,10 z" style="fill: var(--coral)"></path>
+            </marker>
+          </defs>
+
+          <path d="M46 746V252C46 168 140 112 240 46C340 112 434 168 434 252V746Z" style="fill: var(--card)"></path>
+          <path d="M46 746V252C46 168 140 112 240 46C340 112 434 168 434 252V746Z" fill="url(#girih-light)" opacity="0.35" class="dark:hidden"></path>
+          <path d="M46 746V252C46 168 140 112 240 46C340 112 434 168 434 252V746Z" fill="url(#girih-dark)" opacity="0.55" class="hidden dark:block"></path>
+          <path fill-rule="evenodd" d="M28 760V250C28 160 128 92 240 26C352 92 452 160 452 250V760ZM46 746V252C46 168 140 112 240 46C340 112 434 168 434 252V746Z" fill="url(#tile-light)" class="dark:hidden"></path>
+          <path fill-rule="evenodd" d="M28 760V250C28 160 128 92 240 26C352 92 452 160 452 250V760ZM46 746V252C46 168 140 112 240 46C340 112 434 168 434 252V746Z" fill="url(#tile-dark)" class="hidden dark:block"></path>
+          <path d="M28 760V250C28 160 128 92 240 26C352 92 452 160 452 250V760" fill="none" style="stroke: var(--brass)" stroke-width="1.5"></path>
+          <path d="M46 746V252C46 168 140 112 240 46C340 112 434 168 434 252V746Z" fill="none" style="stroke: var(--brass)" stroke-width="1"></path>
+
+          <text x="240" y="104" text-anchor="middle" style="fill: var(--brass); font-family: var(--font-sans); font-size: 9.5px; font-weight: 600; letter-spacing: 2.4px">BUILD TIME</text>
+          <text x="240" y="123" text-anchor="middle" style="fill: var(--ink); font-family: var(--font-serif); font-size: 16px; font-style: italic">steeped at build time</text>
+
+          <rect x="110" y="134" width="260" height="74" rx="10" style="fill: var(--code-bg); stroke: var(--line-strong)"></rect>
+          <g style="font-family: var(--font-mono); font-size: 9.5px; fill: var(--ink-2)">
+            <text x="124" y="155"><tspan style="fill: var(--coral)">let</tspan> view count =</text>
+            <text x="135.4" y="169">&lt;<tspan style="fill: var(--azure)">div</tspan> className="counter"&gt;</text>
+            <text x="146.8" y="183">…</text>
+            <text x="146.8" y="197">&lt;<tspan style="fill: var(--azure)">output</tspan>&gt;(Html.int count)&lt;/<tspan style="fill: var(--azure)">output</tspan>&gt;</text>
+          </g>
+
+          <path d="M240 208V244" fill="none" style="stroke: var(--azure)" stroke-width="1.6" marker-end="url(#tip)"></path>
+          <rect x="196" y="214" width="88" height="20" rx="10" style="fill: var(--card); stroke: var(--azure)"></rect>
+          <text x="240" y="228" text-anchor="middle" style="fill: var(--azure); font-family: var(--font-mono); font-size: 9.5px; font-weight: 600">meltea-ppx</text>
+
+          <g style="font-family: var(--font-mono); font-size: 8.6px; fill: var(--ink-3)" text-anchor="middle">
+            <text x="240" y="259">&lt;div class="counter"&gt;&lt;button&gt;-&lt;/button&gt;</text>
+            <text x="240" y="272">&lt;output&gt;<tspan style="fill: var(--coral); font-size: 11px">●</tspan>&lt;/output&gt;&lt;button&gt;+&lt;/button&gt;…</text>
+          </g>
+
+          <g style="font-family: var(--font-sans); font-size: 10.5px; fill: var(--ink-2)">
+            <text x="62" y="298">static markup →</text>
+            <text x="62" y="312">a template,</text>
+            <text x="62" y="326">parsed once,</text>
+            <text x="62" y="340">cloned per mount</text>
+            <text x="62" y="358" style="fill: var(--coral)">● one hole: the text</text>
+          </g>
+
+          <path d="M62 381H180M300 381H420" style="stroke: var(--line-strong)" stroke-dasharray="3 5"></path>
+          <text x="62" y="376" style="fill: var(--brass); font-family: var(--font-sans); font-size: 8.5px; font-weight: 600; letter-spacing: 1.8px">↑ BUILD</text>
+          <text x="62" y="394" style="fill: var(--brass); font-family: var(--font-sans); font-size: 8.5px; font-weight: 600; letter-spacing: 1.8px">↓ RUN TIME</text>
+
+          <g class="steam-wisp" aria-hidden="true" style="stroke: var(--ink-3)" fill="none" stroke-width="1.4" stroke-linecap="round">
+            <path d="M228 288C224 282 232 278 228 272"></path>
+            <path d="M240 290C236 283 244 279 240 271" style="animation-delay: -1.3s"></path>
+            <path d="M252 288C248 282 256 278 252 272" style="animation-delay: -2.6s"></path>
+          </g>
+
+          <g clip-path="url(#glass-inside)">
+            <g class="tea-level">
+              <rect x="180" y="296" width="120" height="200" fill="url(#tea)"></rect>
+              <ellipse cx="240" cy="296" rx="62" ry="3.5" fill="#f2a066" opacity="0.8"></ellipse>
+            </g>
+          </g>
+          <path d="M185 290C186 328 209 350 209 380C209 410 190 434 190 472Q190 480 198 480H282Q290 480 290 472C290 434 271 410 271 380C271 350 294 328 295 290Z" fill="none" style="stroke: var(--brass)" stroke-width="2"></path>
+          <path d="M196 300C198 326 214 344 216 370" fill="none" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round" opacity="0.35"></path>
+          <ellipse cx="240" cy="290" rx="55" ry="4" fill="none" style="stroke: var(--brass)" stroke-width="1.4"></ellipse>
+          <ellipse cx="240" cy="492" rx="88" ry="10" style="fill: var(--brass-soft); stroke: var(--brass)" stroke-width="1.4"></ellipse>
+          <ellipse cx="240" cy="489" rx="34" ry="3.5" fill="none" style="stroke: var(--brass)" stroke-width="1" opacity="0.6"></ellipse>
+
+          <g style="font-family: var(--font-mono); font-size: 9px" text-anchor="middle">
+            <rect x="314" y="400" width="104" height="20" rx="10" style="fill: var(--card); stroke: var(--line-strong)"></rect>
+            <text x="366" y="413.5" style="fill: var(--ink)">a click</text>
+            <path d="M366 420V428" style="stroke: var(--azure)" marker-end="url(#tip)"></path>
+            <rect x="314" y="430" width="104" height="20" rx="10" style="fill: var(--card); stroke: var(--line-strong)"></rect>
+            <text x="366" y="443.5" style="fill: var(--ink)">update → <tspan data-live-count>0</tspan></text>
+            <path d="M366 450V458" style="stroke: var(--azure)" marker-end="url(#tip)"></path>
+            <rect x="314" y="460" width="104" height="20" rx="10" style="fill: var(--card); stroke: var(--line-strong)"></rect>
+            <text x="366" y="473.5" style="fill: var(--ink)">count !== last</text>
+            <path d="M366 480V488" style="stroke: var(--coral)" marker-end="url(#tip-coral)"></path>
+            <rect x="306" y="490" width="120" height="20" rx="10" style="fill: var(--card); stroke: var(--coral)"></rect>
+            <text x="366" y="503.5" style="fill: var(--coral)">text.data = "<tspan data-live-count>0</tspan>"</text>
+            <path d="M306 500C296 500 290 470 280 450" fill="none" style="stroke: var(--coral)" stroke-dasharray="3 3" marker-end="url(#tip-coral)"></path>
+          </g>
+
+          <g class="steam-words" aria-hidden="true" style="font-family: var(--font-sans); font-size: 11px; fill: var(--ink-2)">
+            <text x="62" y="420" style="animation-delay: 0s">virtual DOM</text>
+            <text x="62" y="440" style="animation-delay: -1.2s">tree diff</text>
+            <text x="62" y="460" style="animation-delay: -2.4s">component tree</text>
+            <text x="62" y="480" style="animation-delay: -3.6s">reconciler</text>
+            <text x="62" y="500" style="animation-delay: -4.8s">scheduler</text>
+          </g>
+
+          <text x="240" y="690" text-anchor="middle" style="fill: var(--ink); font-family: var(--font-serif); font-size: 17px; font-style: italic">No virtual DOM.</text>
+          <text x="240" y="712" text-anchor="middle" style="fill: var(--ink); font-family: var(--font-serif); font-size: 17px; font-style: italic">One === per value, one write per change.</text>
+        </svg>
+        <div class="absolute inset-x-0 top-[67.5%] flex flex-col items-center gap-1.5 sm:gap-2">
+          <div id="root"></div>
+          <p class="text-[0.72rem] text-ink-3" aria-live="polite">
+            DOM writes to the output: <span data-live-writes class="font-mono font-semibold text-coral">0</span>
+          </p>
+        </div>
+        <p class="mt-4 text-center font-serif text-lg text-ink-2 italic">The glass is blown once. Every render just pours the tea.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="bg-card/60">
+    <div class="tile-band h-3.5" aria-hidden="true"></div>
+    <dl class="wrap grid grid-cols-2 lg:grid-cols-4">
+      {
+        stats.map((stat) => (
+          <div class="reveal px-1 py-10 sm:px-6">
+            <Ornament kind="glass" class="mb-4 h-7 w-5" />
+            <dt class="sr-only">{stat.label}</dt>
+            <dd class="display text-[3rem] leading-none tabular-nums sm:text-[3.6rem]">{stat.value}</dd>
+            <dd class="mt-3 text-sm leading-snug text-ink-2" aria-hidden="true">{stat.label}</dd>
+            <dd class="mt-1.5 text-xs font-medium text-coral">{stat.note}</dd>
+          </div>
+        ))
+      }
+    </dl>
+    <div class="tile-band h-3.5" aria-hidden="true"></div>
+  </section>
+
+  <section class="wrap py-24 sm:py-32" aria-labelledby="loop">
+    <SectionHead eyebrow="The recipe" title="Four pieces, all of them pure." id="loop">
+      The Elm architecture in OCaml: a model, messages, a pure <code>update</code> and a pure <code>view</code> in mlx. No hooks and no components with
+      state: an event handler is a message.
+    </SectionHead>
+    <div class="mt-12 grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_18rem]">
+      <Snippet class="reveal" code={melteaCounter} lang="ocaml" title="counter.mlx" />
+      <ol class="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
+        {
+          loop.map((piece, index) => (
+            <li class="reveal card flex gap-4 p-5">
+              <span class="grid h-9 w-9 shrink-0 place-items-center rounded-full border border-brass/50 font-serif text-lg font-semibold text-brass italic">{index + 1}</span>
+              <span class="min-w-0">
+                <span class="display block text-[1.4rem] leading-tight">{piece.name}</span>
+                <span class="mt-1 block font-mono text-[0.74rem] text-coral">{piece.code}</span>
+                <span class="mt-2 block text-sm leading-relaxed text-ink-2">{piece.text}</span>
+              </span>
+            </li>
+          ))
+        }
+      </ol>
+    </div>
+    <Figure
+      class="mt-12"
+      name="compiled"
+      alt="The counter in Meltea: you write the view in mlx; Meltea compiles it into a template tree of div, two buttons and an output whose text is the only hole; when + is clicked the update makes count 42, the compiled code compares count with its last value and writes 42 into that one text node; the grey static nodes get no DOM writes; there is no virtual DOM"
+    />
+    <div class="reveal mt-8">
+      <p class="mb-3 text-sm text-ink-2">The counter's view compiles to this JavaScript (names shortened):</p>
+      <Snippet code={melteaCompiled} lang="js" title="counter.js" />
+    </div>
+  </section>
+
+  <section class="relative overflow-hidden bg-bg-soft/60 py-24 sm:py-32" aria-labelledby="writers">
+    <div class="girih pointer-events-none absolute inset-0 opacity-30" aria-hidden="true"></div>
+    <div class="wrap">
+      <SectionHead eyebrow="Steeped at build time" title="The compiler reads your update, so you annotate nothing." id="writers">
+        No signals and nothing in your code. <code>meltea-ppx</code> finds which message writes which field, and which part of the view reads it.
+      </SectionHead>
+      <div class="mt-12 grid gap-4 lg:grid-cols-3">
+        {
+          writers.map((writer) => (
+            <div class="reveal card p-7">
+              <Ornament kind="rosette" class="h-10 w-10" />
+              <h3 class="display mt-4 text-[1.6rem] leading-tight">{writer.name}</h3>
+              <p class="mt-3 text-[0.95rem] leading-relaxed text-ink-2">{writer.text}</p>
+            </div>
+          ))
+        }
+      </div>
+      <div class="mt-8 grid gap-8">
+        <div class="reveal max-w-3xl min-w-0">
+          <p class="mb-3 text-sm text-ink-2">What the alert looks like, at the handler, at build time:</p>
+          <Snippet code={fanoutAlert} lang="plaintext" title="dune build" />
+          <a href={withBase("/how-it-works#fanout")} class="mt-5 inline-flex text-sm font-medium text-azure hover:underline">How fanout is found →</a>
+        </div>
+        <Figure
+          name="fanout"
+          alt="Fanout in Meltea's TodoMVC: meltea-ppx follows a frequent event to the lists it reaches. The edit field's onInput sends Retype, whose branch of update writes editing, and the list in view reads todos, filter and editing, so every keystroke makes the list check all its rows; the compiler raises the alert fanout at the handler. The new-todo field's onInput sends Type, which writes field, which no list reads, so typing writes one hole and there is no alert. A key handler's literal branch such as Enter sends Add once and does not count"
+        />
+      </div>
+    </div>
+  </section>
+
+  <section class="wrap py-24 sm:py-32" aria-labelledby="dev">
+    <SectionHead eyebrow="Served hot" title="Keep the state while you edit. Render on a server without a DOM." id="dev" />
+    <div class="mt-12 space-y-5">
+      <div class="reveal card grid items-center gap-8 p-7 sm:p-9 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
+        <div>
+          <span class="eyebrow"><Ornament kind="glass" class="h-5 w-4" />Hot reload</span>
+          <h3 class="display mt-2 text-[1.9rem] leading-tight">An edit shows the new view of the old model.</h3>
+          <p class="mt-3 text-[0.95rem] leading-relaxed text-ink-2">
+            With <code>~start:Program.hot</code> and Vite's HMR, as elm-watch does. When the module's types changed, it starts from <code>init</code>.
+          </p>
+        </div>
+        <Figure
+          name="hot"
+          alt="Hot reload in Meltea: a program runs on the root with its model and the shape of its module's types. After an edit, Vite runs main.mlx again, and Program.element with ~start:Program.hot finds the running program; when the new code's shape is the same, the model carries over and the new view and update show the old state; when the types changed, the program starts from init"
+        />
+      </div>
+      <div class="reveal card grid items-center gap-8 p-7 sm:p-9 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
+        <div>
+          <span class="eyebrow"><Ornament kind="glass" class="h-5 w-4" />Server rendering</span>
+          <h3 class="display mt-2 text-[1.9rem] leading-tight">One module, natively or in Node.</h3>
+          <p class="mt-3 text-[0.95rem] leading-relaxed text-ink-2">
+            Under <code>meltea-ppx -server</code> the same view compiles to code that writes strings, with no DOM. The browser build hydrates the HTML, and
+            clicks and typing made before the code arrives are delivered in order.
+          </p>
+        </div>
+        <Snippet class="min-w-0" code={servedDune} lang="scheme" title="dune" />
+      </div>
+      <div class="reveal card grid items-center gap-8 p-7 sm:p-9 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
+        <div>
+          <span class="eyebrow"><Ornament kind="glass" class="h-5 w-4" />Transitions</span>
+          <h3 class="display mt-2 text-[1.9rem] leading-tight">Enter, leave, move. And View Transitions.</h3>
+          <p class="mt-3 text-[0.95rem] leading-relaxed text-ink-2">
+            As Vue's <code>&lt;Transition&gt;</code> and <code>&lt;TransitionGroup&gt;</code>; <code>Cmd.view_transition</code> from an update draws inside the
+            browser's View Transitions.
+          </p>
+        </div>
+        <Snippet class="min-w-0" code={transitionView} lang="ocaml" title="view.mlx" />
+      </div>
+    </div>
+  </section>
+
+  <section class="bg-bg-soft/60 py-24 sm:py-32" aria-labelledby="bench">
+    <div class="wrap">
+      <SectionHead eyebrow="Benchmarks" title="Within ×1.2 of hand-written JavaScript." id="bench">
+        js-framework-benchmark's keyed operations, reproduced in headless Chrome against hand-written vanilla JS and React 18. The ratios move by about 0.1
+        between runs.
+      </SectionHead>
+      <div class="mt-12 grid gap-5 lg:grid-cols-2">
+        <BenchChart metric="speed" />
+        <BenchChart metric="size" />
+      </div>
+      <a href={withBase("/benchmarks")} class="reveal btn-ghost mt-8">All results and the method <span aria-hidden="true">→</span></a>
+    </div>
+  </section>
+
+  <section class="wrap py-24 sm:py-32" aria-labelledby="start">
+    <div class="reveal card relative overflow-hidden p-7 sm:p-12">
+      <div class="glow pointer-events-none absolute inset-0" aria-hidden="true"></div>
+      <div class="relative grid gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.35fr)]">
+        <div>
+          <p class="eyebrow"><Ornament kind="tulip" class="h-5 w-4" />Afiyet olsun</p>
+          <h2 id="start" class="h-section mt-3">Brew your first program.</h2>
+          <p class="lede mt-4">
+            Add <code>meltea</code> and <code>meltea-ppx</code> to a <code>melange.emit</code> stanza, and <code>(dialect (name mlx) …)</code> in
+            <code>dune-project</code> for <code>.mlx</code> files. Until the opam release, pin it.
+          </p>
+          <div class="mt-8 flex flex-wrap gap-3">
+            <a href={withBase("/getting-started")} class="btn-primary">Getting started <span aria-hidden="true">→</span></a>
+            <a href={withBase("/guide")} class="btn-ghost">From counter to TodoMVC</a>
+          </div>
+        </div>
+        <div class="min-w-0 space-y-4">
+          <Snippet code={melteaPin} lang="console" title="shell" />
+          <Snippet code={melteaUse} lang="scheme" title="dune" />
+        </div>
+      </div>
+    </div>
+  </section>
+</Base>
+
+<script is:inline type="module" src={withBase("/demo/meltea-counter.js")}></script>
+
+<script>
+  const glass = document.querySelector<HTMLElement>("[data-glass]");
+  const root = document.getElementById("root");
+  if (glass && root) {
+    let writes = 0;
+    const show = (output: HTMLOutputElement) => {
+      const count = Number(output.textContent ?? "0");
+      glass.style.setProperty("--level", String(count < 0 ? 0.05 : Math.min(1, 0.22 + count * 0.078)));
+      glass.dataset.sign = count < 0 ? "negative" : "positive";
+      glass.querySelectorAll("[data-live-count]").forEach((node) => (node.textContent = output.textContent ?? ""));
+      glass.querySelectorAll("[data-live-writes]").forEach((node) => (node.textContent = String(writes)));
+    };
+    const watch = (output: HTMLOutputElement) => {
+      show(output);
+      new MutationObserver((records) => {
+        writes += records.length;
+        show(output);
+      }).observe(output, { characterData: true, childList: true, subtree: true });
+    };
+    const mounted = root.querySelector("output");
+    if (mounted) watch(mounted);
+    else {
+      const waiting = new MutationObserver(() => {
+        const output = root.querySelector("output");
+        if (output) {
+          waiting.disconnect();
+          watch(output);
+        }
+      });
+      waiting.observe(root, { childList: true, subtree: true });
+    }
+  }
+</script>
+
+<style is:global>
+  #root .counter {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.45rem;
+    border-radius: 999px;
+    border: 1px solid var(--line-strong);
+    background: var(--card);
+    box-shadow: 0 14px 30px -18px rgba(60, 40, 10, 0.45);
+  }
+  #root .counter button {
+    min-width: 2.4rem;
+    height: 2.4rem;
+    padding: 0 0.75rem;
+    border-radius: 999px;
+    border: 1px solid var(--brass);
+    background: var(--card);
+    color: var(--ink);
+    font: 600 1rem/1 var(--font-sans);
+    cursor: pointer;
+    transition:
+      background-color 0.2s,
+      transform 0.15s;
+  }
+  #root .counter button:hover:not(:disabled) {
+    background: var(--brass-soft);
+  }
+  #root .counter button:active:not(:disabled) {
+    transform: scale(0.94);
+  }
+  #root .counter button:last-child {
+    font-size: 0.78rem;
+    font-weight: 500;
+  }
+  #root .counter button:disabled {
+    opacity: 0.4;
+    cursor: default;
+  }
+  #root .counter output {
+    min-width: 3rem;
+    text-align: center;
+    font: 600 1.9rem/1 var(--font-serif);
+    font-variant-numeric: lining-nums tabular-nums;
+    color: var(--coral);
+  }
+  #root .counter output.negative {
+    color: var(--azure);
+  }
+  @media (max-width: 640px) {
+    #root .counter {
+      gap: 0.3rem;
+      padding: 0.3rem;
+    }
+    #root .counter button {
+      min-width: 1.9rem;
+      height: 1.9rem;
+      padding: 0 0.55rem;
+      font-size: 0.85rem;
+    }
+    #root .counter button:last-child {
+      font-size: 0.7rem;
+    }
+    #root .counter output {
+      min-width: 2.2rem;
+      font-size: 1.45rem;
+    }
+  }
+  [data-glass] .tea-level {
+    transform: translateY(calc((1 - var(--level)) * 176px));
+    transition:
+      transform 0.9s cubic-bezier(0.3, 1.4, 0.5, 1),
+      opacity 0.6s;
+  }
+  [data-glass][data-sign="negative"] .tea-level {
+    opacity: 0.35;
+  }
+  [data-glass] .steam-wisp path {
+    animation: wisp 3.9s ease-in-out infinite;
+  }
+  @keyframes wisp {
+    0% {
+      opacity: 0;
+      transform: translateY(4px);
+    }
+    40% {
+      opacity: 0.7;
+    }
+    100% {
+      opacity: 0;
+      transform: translateY(-10px);
+    }
+  }
+  [data-glass] .steam-words text {
+    text-decoration: line-through;
+    animation: drift 6s ease-in-out infinite;
+  }
+  @keyframes drift {
+    0% {
+      opacity: 0.7;
+      transform: translateY(0);
+    }
+    70% {
+      opacity: 0.2;
+    }
+    100% {
+      opacity: 0;
+      transform: translateY(-16px);
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    [data-glass] .steam-words text,
+    [data-glass] .steam-wisp path {
+      animation: none;
+      opacity: 0.4;
+    }
+  }
+</style>

@@ -1,0 +1,30 @@
+---
+import { withBase } from "../data/paths";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+
+interface Props {
+  name: string;
+  alt: string;
+  caption?: string;
+  class?: string;
+}
+
+const { name, alt, caption, class: className } = Astro.props;
+const [, , width, height] = (
+  readFileSync(join(process.cwd(), "public/figures", `${name}.svg`), "utf8").match(/viewBox="([^"]+)"/)?.[1] ?? "0 0 896 480"
+)
+  .trim()
+  .split(/\s+/)
+  .map(Number);
+---
+
+<figure class:list={["reveal group min-w-0", className]}>
+  <div class="tile-frame shadow-[0_24px_60px_-34px_rgba(60,40,10,0.45)] dark:shadow-none">
+    <div class="relative overflow-hidden bg-card p-3 sm:p-6">
+    <img src={withBase(`/figures/${name}.svg`)} alt={alt} width={width} height={height} loading="lazy" decoding="async" class="block h-auto w-full dark:hidden" />
+    <img src={withBase(`/figures/${name}-dark.svg`)} alt={alt} width={width} height={height} loading="lazy" decoding="async" class="hidden h-auto w-full dark:block" />
+    </div>
+  </div>
+  {caption && <figcaption class="mt-3 px-2 text-sm leading-relaxed text-ink-3">{caption}</figcaption>}
+</figure>

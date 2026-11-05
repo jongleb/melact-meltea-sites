@@ -1,0 +1,28 @@
+---
+import { camel } from "../data/camel";
+
+interface Props {
+  next: "bg" | "soft";
+  scene: "plain" | "caravan";
+  class?: string;
+}
+
+const { next, scene, class: className } = Astro.props;
+---
+
+<div class:list={["pointer-events-none relative h-[110px] w-full overflow-hidden sm:h-[150px]", className]} aria-hidden="true">
+  {
+    scene === "caravan" && (
+      <svg class="caravan absolute bottom-[58px] left-0 h-10 w-full sm:bottom-[84px] sm:h-12" viewBox="0 0 1200 48" preserveAspectRatio="xMinYMax meet">
+        {[0, 1, 2, 3].map((index) => (
+          <path d={camel} transform={`translate(${index * 46} 4) scale(${0.42 - index * 0.03})`} fill="var(--camel)" opacity={0.8 - index * 0.1} />
+        ))}
+      </svg>
+    )
+  }
+  <svg class="absolute inset-0 h-full w-full" viewBox="0 0 1440 150" preserveAspectRatio="none">
+    <path d="M0 70 C 180 30, 330 40, 470 72 S 760 118, 930 70 S 1260 26, 1440 60 V150 H0Z" fill="var(--dune-1)" />
+    <path d="M0 102 C 210 70, 380 84, 560 104 S 900 128, 1080 96 S 1330 74, 1440 92 V150 H0Z" fill="var(--dune-2)" opacity="0.9" />
+    <path d="M0 132 C 240 110, 470 116, 700 130 S 1120 146, 1440 124 V150 H0Z" fill={next === "bg" ? "var(--bg)" : "var(--bg-soft)"} />
+  </svg>
+</div>

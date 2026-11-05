@@ -1,0 +1,241 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Melact and Meltea</title>
+    <meta name="description" content="Two front ends for OCaml and Melange on one Svelte-like compiler: Melact for reason-react code, Meltea for the Elm architecture." />
+    <meta name="color-scheme" content="light dark" />
+    <link rel="icon" type="image/svg+xml" href="melact.svg" />
+    <style>
+      :root {
+        --page: #f6f1e8;
+        --ink: #241c16;
+        --ink-2: #5d5046;
+        --line: rgba(36, 28, 22, 0.12);
+        --desert-top: #fde7c8;
+        --desert-bottom: #f6dcb4;
+        --desert-ink: #2a1f17;
+        --desert-accent: #c2500a;
+        --dune-a: #ecc994;
+        --dune-b: #e2b276;
+        --tea-paper: #fbf7ee;
+        --tea-ink: #1d2a4a;
+        --tea-accent: #1f4fa3;
+        --tea-coral: #c0392b;
+        --tea-tile: rgba(31, 79, 163, 0.14);
+        --tea-tile-2: rgba(23, 151, 160, 0.16);
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --page: #0a0d1c;
+          --ink: #f1e9dc;
+          --ink-2: #b9ad9c;
+          --line: rgba(241, 233, 220, 0.14);
+          --desert-top: #070a1c;
+          --desert-bottom: #141a3f;
+          --desert-ink: #f5ecdc;
+          --desert-accent: #f59a4a;
+          --dune-a: #232853;
+          --dune-b: #2d2f5c;
+          --tea-paper: #0c1734;
+          --tea-ink: #efe6d2;
+          --tea-accent: #3fc1c9;
+          --tea-coral: #e3a64a;
+          --tea-tile: rgba(63, 193, 201, 0.14);
+          --tea-tile-2: rgba(227, 166, 74, 0.14);
+        }
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        background: var(--page);
+        color: var(--ink);
+        font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+        -webkit-font-smoothing: antialiased;
+        display: flex;
+        flex-direction: column;
+      }
+      main {
+        flex: 1;
+        width: 100%;
+        max-width: 72rem;
+        margin: 0 auto;
+        padding: 4rem 1rem 3rem;
+      }
+      header h1 {
+        margin: 0;
+        font-size: clamp(2rem, 5vw, 3.2rem);
+        letter-spacing: -0.03em;
+        line-height: 1.05;
+      }
+      header p {
+        margin: 1rem 0 0;
+        max-width: 40rem;
+        color: var(--ink-2);
+        font-size: 1.1rem;
+        line-height: 1.6;
+      }
+      .cards {
+        display: grid;
+        gap: 1.5rem;
+        margin-top: 3rem;
+      }
+      @media (min-width: 52rem) {
+        .cards {
+          grid-template-columns: 1fr 1fr;
+        }
+      }
+      .card {
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        min-height: 25rem;
+        padding: 2rem;
+        border-radius: 1.75rem;
+        overflow: hidden;
+        text-decoration: none;
+        transition:
+          transform 0.25s ease,
+          box-shadow 0.25s ease;
+      }
+      .card:hover {
+        transform: translateY(-3px);
+      }
+      .card:focus-visible {
+        outline: 3px solid currentColor;
+        outline-offset: 4px;
+      }
+      .card img {
+        width: 4.5rem;
+        height: 4.5rem;
+      }
+      .card .dark-logo {
+        display: none;
+      }
+      @media (prefers-color-scheme: dark) {
+        .card .light-logo {
+          display: none;
+        }
+        .card .dark-logo {
+          display: block;
+        }
+      }
+      .card h2 {
+        margin: 1.5rem 0 0;
+        font-size: 2.2rem;
+        letter-spacing: -0.03em;
+      }
+      .card p {
+        margin: 0.75rem 0 0;
+        max-width: 26rem;
+        font-size: 1.05rem;
+        line-height: 1.55;
+      }
+      .card .go {
+        margin-top: auto;
+        padding-top: 2rem;
+        font-weight: 600;
+        position: relative;
+        z-index: 1;
+      }
+      .melact {
+        color: var(--desert-ink);
+        background: linear-gradient(180deg, var(--desert-top), var(--desert-bottom));
+        border: 1px solid var(--line);
+        font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+        box-shadow: 0 30px 60px -40px rgba(194, 80, 10, 0.6);
+      }
+      .melact h2,
+      .melact .go {
+        color: var(--desert-accent);
+      }
+      .melact .dunes {
+        position: absolute;
+        inset: auto 0 0 0;
+        width: 100%;
+        height: 7rem;
+      }
+      .meltea {
+        color: var(--tea-ink);
+        background-color: var(--tea-paper);
+        background-image:
+          radial-gradient(circle at 0 0, var(--tea-tile) 0 18%, transparent 19%),
+          radial-gradient(circle at 100% 100%, var(--tea-tile) 0 18%, transparent 19%),
+          radial-gradient(circle at 50% 50%, var(--tea-tile-2) 0 9%, transparent 10%);
+        background-size: 48px 48px;
+        border: 3px double var(--tea-accent);
+        font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+        box-shadow: 0 30px 60px -40px rgba(31, 79, 163, 0.6);
+      }
+      .meltea h2 {
+        color: var(--tea-accent);
+        font-weight: 600;
+        font-style: italic;
+      }
+      .meltea .go {
+        color: var(--tea-coral);
+      }
+      footer {
+        padding: 2rem 1rem 3rem;
+        text-align: center;
+        color: var(--ink-2);
+        font-size: 0.9rem;
+      }
+      footer .trademark {
+        margin: 0.75rem 0 0;
+        font-size: 0.8rem;
+      }
+      footer a {
+        color: inherit;
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .card {
+          transition: none;
+        }
+        .card:hover {
+          transform: none;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <h1>Two front ends, one compiler.</h1>
+        <p>
+          OCaml and Melange views compiled like Svelte: DOM templates with holes, and a refresh that writes only what changed. Pick the one that fits the code you
+          have.
+        </p>
+      </header>
+      <div class="cards">
+        <a class="card melact" href="melact/">
+          <img class="light-logo" src="melact.svg" alt="" width="72" height="72" />
+          <img class="dark-logo" src="melact-dark.svg" alt="" width="72" height="72" />
+          <h2>Melact</h2>
+          <p>Your reason-react code, without React. Change two lines in <code>dune</code>; no virtual DOM, checked against React 18.</p>
+          <span class="go">Two dune lines →</span>
+          <svg class="dunes" viewBox="0 0 600 112" preserveAspectRatio="none" aria-hidden="true">
+            <path d="M0 52 C 120 24, 230 30, 330 54 S 520 82, 600 46 V112 H0Z" fill="var(--dune-a)" />
+            <path d="M0 86 C 150 66, 300 70, 420 88 S 560 98, 600 84 V112 H0Z" fill="var(--dune-b)" />
+          </svg>
+        </a>
+        <a class="card meltea" href="meltea/">
+          <img class="light-logo" src="meltea.svg" alt="" width="72" height="72" />
+          <img class="dark-logo" src="meltea-dark.svg" alt="" width="72" height="72" />
+          <h2>Meltea</h2>
+          <p>The Elm architecture for OCaml, compiled like Svelte. A model, messages, a pure update and a pure view in mlx.</p>
+          <span class="go">Pour a glass →</span>
+        </a>
+      </div>
+    </main>
+    <footer>
+      <a href="https://github.com/jongleb/melact">github.com/jongleb/melact</a> ·
+      <a href="https://github.com/jongleb/meltea">github.com/jongleb/meltea</a>
+      <p class="trademark">React is a trademark of Meta Platforms, Inc. Melact is not affiliated with or endorsed by Meta.</p>
+    </footer>
+  </body>
+</html>

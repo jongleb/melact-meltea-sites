@@ -1,0 +1,17 @@
+---
+interface Props {
+  id: string;
+  title: string;
+  kicker: string;
+}
+
+const { id, title, kicker } = Astro.props;
+---
+
+<section id={id} class="reveal scroll-mt-28 pt-14 first:pt-0" aria-labelledby={`${id}-title`}>
+  <p class="eyebrow">{kicker}</p>
+  <h2 id={`${id}-title`} class="display mt-2 text-[2.1rem] leading-[1.08] text-balance sm:text-[2.6rem]">{title}</h2>
+  <div class="prose-site mt-5 [&>*+*]:mt-6">
+    <slot />
+  </div>
+</section>

@@ -1,0 +1,457 @@
+---
+import { withBase } from "../data/paths";
+import Base from "../layouts/Base.astro";
+import Figure from "../components/Figure.astro";
+import Snippet from "../components/Snippet.astro";
+import SectionHead from "../components/SectionHead.astro";
+import Funnel from "../components/Funnel.astro";
+import Dunes from "../components/Dunes.astro";
+import Stars from "../components/Stars.astro";
+import { melactDune, melactFullCounter } from "../data/samples";
+
+const stats = [
+  { value: "2", label: "lines to change in your dune files", note: "libraries and preprocess" },
+  { value: "0", label: "npm runtime dependencies", note: "the runtime is compiled OCaml" },
+  { value: "605/605", label: "steps of random walks through reason-seoul's TodoMVC with the same DOM as React 18", note: "only its dune file changed" },
+  { value: "33/33", label: "steps of reason-react's own demo with the same DOM as React 18", note: "compared after every click" },
+];
+
+
+const frames = [360, 318, 276, 234, 192, 150].map((size, index) => ({ size, offset: 200 - size / 2, radius: size * 0.27, opacity: 0.18 + index * 0.13 }));
+
+const why = [
+  {
+    title: "No virtual DOM",
+    text: "A render does not build a tree of elements to diff. It builds one array: the values of the holes in a template. Everything static is parsed once, at module load, and cloned.",
+  },
+  {
+    title: "Exact change detection",
+    text: "“Did this hole change” is ===. An unchanged reference is an unchanged value, so a physically equal child list or lazy argument skips its whole subtree.",
+  },
+  {
+    title: "Updates start where state changed",
+    text: "A setState re-renders its own component, not the root. Children with physically unchanged props are skipped without memo.",
+  },
+  {
+    title: "Few DOM moves for lists",
+    text: "Keyed lists keep their common prefix and suffix, and the longest increasing run of old positions. Swapping two of 1,000 rows is 2 insertBefore calls.",
+  },
+  {
+    title: "One listener per event type",
+    text: "Bubbling events are delegated to document. A handler is a property on its element, so a new closure each render costs one property write.",
+  },
+  {
+    title: "Still reason-react",
+    text: "Same JSX in mlx, Reason or OCaml [@JSX], and the same hooks with the same signatures. Pure-OCaml reason-react code is the compatibility target.",
+  },
+];
+
+const surface = [
+  "useState",
+  "useReducer",
+  "useEffect*",
+  "useLayoutEffect*",
+  "useMemo*",
+  "useCallback*",
+  "useRef",
+  "useImperativeHandle*",
+  "useId",
+  "useContext",
+  "React.memo",
+  "React.act",
+  "React.Event",
+  "React.createElement + makeProps",
+  "ReactDOM.Client",
+  "ReactDOM.Style",
+  "ReactDOM.Ref",
+  "ReactDOMServer.renderToString",
+  "ReactDOM.Client.hydrateRoot",
+  "ReasonReactRouter",
+];
+---
+
+<Base
+  title="Melact: your reason-react code, without React"
+  description="reason-react for Melange, without React and without a virtual DOM. Change two lines in dune; JSX compiles to DOM templates with holes."
+>
+  <section class="sky relative overflow-hidden">
+    <Stars count={70} />
+    <div class="glow pointer-events-none absolute inset-0" aria-hidden="true"></div>
+    <div class="wrap relative grid items-center gap-14 pt-16 pb-20 sm:pt-24 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)] lg:pt-24 lg:pb-12">
+      <div>
+        <p class="reveal inline-flex items-center gap-2 rounded-full border border-line bg-bg/70 px-3.5 py-1.5 font-mono text-[0.72rem] text-ink-2 backdrop-blur">
+          <span class="h-1.5 w-1.5 rounded-[2px] bg-accent-2"></span> templates with holes, compiled
+        </p>
+        <h1 class="reveal mt-7 font-display text-[2.8rem] leading-[1] font-bold tracking-[-0.04em] text-balance text-ink sm:text-6xl lg:text-[3.7rem]">
+          Your reason&#8209;react code, <span class="gradient-text">without React.</span>
+        </h1>
+        <p class="reveal lede mt-6 max-w-xl sm:text-xl">
+          Change two lines in your <code>dune</code> files. Melact keeps reason-react's surface and compiles your JSX into DOM templates with holes. A re-render
+          writes only the holes whose values changed.
+        </p>
+        <div class="reveal mt-9 flex flex-wrap gap-3">
+          <a href={withBase("migrating")} class="btn-primary">Migrate in two lines <span aria-hidden="true">→</span></a>
+          <a href={withBase("how-it-works")} class="btn-ghost">How it works</a>
+        </div>
+      </div>
+
+      <div class="reveal relative min-w-0">
+        <div data-funnel class="relative mx-auto aspect-square w-full max-w-[460px] touch-manipulation">
+          <svg viewBox="0 0 400 400" class="absolute inset-0 h-full w-full overflow-visible" aria-hidden="true" fill="none">
+            <defs>
+              <radialGradient id="funnel-halo">
+                <stop offset="0" stop-color="var(--accent-2)" stop-opacity="0.32" />
+                <stop offset="0.55" stop-color="var(--accent-2)" stop-opacity="0.08" />
+                <stop offset="1" stop-color="var(--accent-2)" stop-opacity="0" />
+              </radialGradient>
+            </defs>
+            <circle cx="200" cy="200" r="200" fill="url(#funnel-halo)" />
+            {
+              frames.map((frame, index) => (
+                <g data-frame transform={`rotate(${index * 7} 200 200)`}>
+                  <rect x={frame.offset} y={frame.offset} width={frame.size} height={frame.size} rx={frame.radius} stroke="var(--funnel)" stroke-width="2.4" opacity={frame.opacity} />
+                </g>
+              ))
+            }
+          </svg>
+          <div class="absolute inset-0 grid place-items-center">
+            <div id="root"></div>
+          </div>
+          <div data-sparks class="pointer-events-none absolute inset-0" aria-hidden="true"></div>
+        </div>
+        <p class="mt-3 text-center text-sm text-ink-2">This is the real Melact build. Each click writes only what changed.</p>
+        <p data-report class="mt-1 text-center font-mono text-xs text-ink-3" aria-live="polite">Click + to see what it writes.</p>
+      </div>
+    </div>
+    <Dunes next="soft" scene="plain" />
+  </section>
+
+  <section class="border-b border-line bg-bg-soft">
+    <dl class="wrap grid grid-cols-2 lg:grid-cols-4">
+      {
+        stats.map((stat) => (
+          <div class="reveal px-2 py-10 sm:px-6">
+            <dt class="sr-only">{stat.label}</dt>
+            <dd class="font-mono text-3xl font-semibold tracking-tight text-ink tabular-nums sm:text-[2.6rem]">{stat.value}</dd>
+            <dd class="mt-3 text-sm leading-snug text-ink-2" aria-hidden="true">{stat.label}</dd>
+            <dd class="mt-1.5 font-mono text-xs text-ink-3">{stat.note}</dd>
+          </div>
+        ))
+      }
+    </dl>
+  </section>
+
+  <section class="wrap pt-24 sm:pt-32" aria-labelledby="migrate">
+    <SectionHead eyebrow="Migrate in two lines" title="Change the libraries. Keep the components." id="migrate">
+      Melact keeps reason-react's surface (<code>React.useState</code>, <code>useEffect</code>, <code>useContext</code>, <code>ReactDOM.Client</code>,
+      <code>React.Event</code>, <code>ReasonReactRouter</code> …) and replaces what is underneath it.
+    </SectionHead>
+    <div class="mt-12 grid gap-6 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)]">
+      <div class="reveal min-w-0">
+        <p class="mb-2.5 flex items-center gap-2 font-mono text-xs text-ink-3"><span class="grid h-5 w-5 place-items-center rounded-md bg-accent text-[0.65rem] font-semibold text-[var(--on-accent)]">1</span>your dune file</p>
+        <Snippet code={melactDune} lang="diff" title="dune" />
+      </div>
+      <div class="reveal min-w-0">
+        <p class="mb-2.5 flex items-center gap-2 font-mono text-xs text-ink-3"><span class="grid h-5 w-5 place-items-center rounded-md bg-accent text-[0.65rem] font-semibold text-[var(--on-accent)]">2</span>your components stay as they are</p>
+        <Snippet code={melactFullCounter} lang="ocaml" title="counter.mlx" />
+      </div>
+    </div>
+  </section>
+
+  <section class="wrap py-24 sm:py-32" aria-labelledby="picture">
+    <SectionHead eyebrow="In one picture" title="Your code stays. What runs underneath changes." id="picture">
+      Melact replaces what is underneath reason-react's surface. Nothing in your components has to know.
+    </SectionHead>
+    <Figure
+      class="mt-12"
+      name="overview"
+      alt="Melact in one picture, for code already on React: a reason-react component switches two dune lines; Melact compiles its JSX into a template parsed once and a refresh; in the browser setState, kept for React code, re-renders only that component, checks n against its last value with one === and writes the text node. Gone: React, react-dom, the virtual DOM, a tree per render, the tree diff, fiber. Stays: your components, hooks, mlx, Reason and OCaml, ReactDOM, React.Event. Starting fresh? Write Meltea"
+    />
+  </section>
+
+  <section class="border-y border-line bg-bg-soft py-24 sm:py-32" aria-labelledby="compat">
+    <div class="wrap">
+      <SectionHead eyebrow="Compatibility" title="Checked against React 18, not assumed." id="compat">
+        The same tests run twice, once on reason-react with real React and once on Melact, and must see the same page.
+      </SectionHead>
+      <div class="mt-12 grid gap-5 lg:grid-cols-3">
+        <div class="reveal card p-6">
+          <p class="font-mono text-xs text-accent-ink">dual test suite</p>
+          <h3 class="mt-3 text-lg font-semibold tracking-tight text-ink">One suite, two Reacts</h3>
+          <p class="mt-2 text-[0.95rem] leading-relaxed text-ink-2">
+            One suite in mlx is built twice, against reason-react with React 18 and against Melact, with identical assertions.
+          </p>
+        </div>
+        <div class="reveal card p-6">
+          <p class="font-mono text-xs text-accent-ink">compat/run.sh</p>
+          <h3 class="mt-3 text-lg font-semibold tracking-tight text-ink">Real apps, two lines changed</h3>
+          <p class="mt-2 text-[0.95rem] leading-relaxed text-ink-2">
+            Clones reason-react, melange-opam-template and reason-seoul's TodoMVC, changes two lines in their <code>dune</code> files and builds them against
+            Melact, then compares the DOM with React's after every step.
+          </p>
+        </div>
+        <div class="reveal card p-6">
+          <p class="font-mono text-xs text-accent-ink">laws</p>
+          <h3 class="mt-3 text-lg font-semibold tracking-tight text-ink">Properties, not scenarios</h3>
+          <p class="mt-2 text-[0.95rem] leading-relaxed text-ink-2">
+            144 vitest + jsdom tests and 25 native QCheck laws. One law sends random mouse and keyboard events that handlers prevent or stop, and React 18 and
+            Melact must read the same values.
+          </p>
+        </div>
+      </div>
+
+      <div class="reveal mt-10">
+        <p class="eyebrow">reason-react surface that works today</p>
+        <ul class="mt-4 flex flex-wrap gap-2">
+          {surface.map((item) => <li class="rounded-lg border border-line bg-bg px-2.5 py-1 font-mono text-[0.78rem] text-ink-2">{item}</li>)}
+        </ul>
+      </div>
+
+      <Figure
+        class="mt-12"
+        name="surface"
+        alt="What melact-ppx and the Melact library make of unchanged reason-react code: a JSX component is a direct call to make; React.createElement with makeProps is the same call with a key; React.Event accessors read the native event, delegated to document; each hook call gets a typed slot key; a component without hooks is a pure view with no instance; ReactDOM.Client clones templates into the element; renderToString and hydrateRoot are Served.render and Served.hydrate; ReasonReactRouter.useUrl reads the location on popstate"
+        caption="Each line of reason-react code on the left compiles, unchanged, to what is on the right."
+      />
+    </div>
+  </section>
+
+  <section class="wrap py-24 sm:py-32" aria-labelledby="why">
+    <SectionHead eyebrow="Why Melact" title="The same component model, compiled." id="why" />
+    <ul class="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+      {
+        why.map((item, index) => (
+          <li class="reveal card p-6 transition-colors hover:border-line-strong">
+            <span class="font-mono text-xs text-ink-3">{String(index + 1).padStart(2, "0")}</span>
+            <h3 class="mt-3 text-base font-semibold tracking-tight text-ink">{item.title}</h3>
+            <p class="mt-2 text-[0.93rem] leading-relaxed text-ink-2">{item.text}</p>
+          </li>
+        ))
+      }
+    </ul>
+  </section>
+
+  <section class="border-y border-line bg-bg-soft py-24 sm:py-32" aria-labelledby="ssr">
+    <div class="wrap">
+      <SectionHead eyebrow="Server rendering" title="HTML in React's format, hydrated by compiled code." id="ssr">
+        <code>ReactDOMServer.renderToString</code> writes HTML in the format of React's own <code>renderToString</code>, with no markers, so a Melact app can also
+        render on a native OCaml server with <a class="underline decoration-line-strong underline-offset-4 hover:decoration-accent" href="https://github.com/ml-in-barcelona/server-reason-react">server-reason-react</a>. <code>ReactDOM.Client.hydrateRoot</code> takes that HTML over in document order, and clicks and typing made before the code arrives are delivered in order.
+      </SectionHead>
+      <Figure
+        class="mt-12"
+        name="hydration"
+        alt="Server rendering and hydration in React's format: on the server Program.render, renderToString or server-reason-react write plain HTML with no markers, and a comment only between two adjacent texts; in the browser, code the compiler generated for each template walks the server's nodes in document order, after an off-page clone has let the template's own refresh compute the values: the root with the same tag is taken over, texts and lists take exactly their nodes, and the buttons get their handlers; no element is added to the page, and HTML that does not match the view is cleared and mounted from scratch. Before the code arrives, the capture script in the page's head records clicks, typing and key presses with each target's value, and hydration delivers them in order"
+      />
+    </div>
+  </section>
+
+  <section class="wrap" aria-labelledby="cta">
+    <div class="reveal sky relative overflow-hidden rounded-3xl border border-line px-6 pt-16 text-center sm:px-12">
+      <Stars count={30} />
+      <Funnel class="absolute -top-24 -left-24 h-72 w-72 opacity-40" />
+      <h2 id="cta" class="relative font-display text-3xl font-bold tracking-[-0.03em] text-balance text-ink sm:text-4xl">
+        Two lines in <code class="font-mono text-[0.85em]">dune</code>. Try it on your app.
+      </h2>
+      <p class="relative mx-auto mt-4 max-w-xl text-ink-2">npm React components will not work; OCaml reason-react code is the target.</p>
+      <div class="relative mt-8 flex flex-wrap justify-center gap-3">
+        <a href={withBase("getting-started")} class="btn-primary">Get started <span aria-hidden="true">→</span></a>
+        <a href="https://github.com/jongleb/melact" class="btn-ghost">github.com/jongleb/melact</a>
+      </div>
+      <Dunes class="-mx-6 mt-10 w-[calc(100%+3rem)] sm:-mx-12 sm:w-[calc(100%+6rem)]" next="bg" scene="caravan" />
+    </div>
+  </section>
+  <script is:inline type="module" src={withBase("demo/melact-counter.js")}></script>
+</Base>
+
+<style is:global>
+  #root .counter {
+    display: grid;
+    grid-template-columns: auto auto auto;
+    grid-template-areas:
+      "minus hole plus"
+      ". reset .";
+    align-items: center;
+    justify-items: center;
+    gap: 0.9rem 1rem;
+    transform: translateY(1.4rem);
+  }
+  #root .counter button {
+    min-width: 2.75rem;
+    height: 2.75rem;
+    padding: 0 0.7rem;
+    border-radius: 0.9rem;
+    border: 1px solid var(--line-strong);
+    background: color-mix(in oklab, var(--bg) 88%, transparent);
+    color: var(--ink);
+    font: 600 1.05rem "JetBrains Mono Variable", ui-monospace, monospace;
+    cursor: pointer;
+    backdrop-filter: blur(6px);
+    transition:
+      border-color 0.2s,
+      transform 0.15s,
+      opacity 0.2s;
+  }
+  #root .counter button:first-child {
+    grid-area: minus;
+  }
+  #root .counter button:nth-of-type(2) {
+    grid-area: plus;
+  }
+  #root .counter button:last-child {
+    grid-area: reset;
+    height: 2.2rem;
+    font-size: 0.72rem;
+    letter-spacing: 0.04em;
+  }
+  #root .counter button:hover:not(:disabled) {
+    border-color: var(--accent);
+  }
+  #root .counter button:active:not(:disabled) {
+    transform: scale(0.94);
+  }
+  #root .counter button:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+  #root .counter output {
+    grid-area: hole;
+    display: grid;
+    place-items: center;
+    width: 5.6rem;
+    height: 5.6rem;
+    border-radius: 1.6rem;
+    background: radial-gradient(circle at 40% 35%, #ffc27a, #e2600c 75%);
+    box-shadow:
+      0 0 0 1px rgba(255, 255, 255, 0.25) inset,
+      0 0 32px rgba(236, 104, 19, 0.55),
+      0 0 90px rgba(236, 104, 19, 0.3);
+    color: #fff8ef;
+    font: 700 2rem "JetBrains Mono Variable", ui-monospace, monospace;
+    text-shadow: 0 1px 8px rgba(120, 40, 0, 0.45);
+  }
+  #root .counter output.negative {
+    background: radial-gradient(circle at 40% 35%, #9fd7e4, #0e7fa6 75%);
+    box-shadow:
+      0 0 0 1px rgba(255, 255, 255, 0.25) inset,
+      0 0 32px rgba(14, 143, 184, 0.5);
+  }
+  #root [data-lit] {
+    animation: hole-flash 0.6s ease-out;
+  }
+  @keyframes hole-flash {
+    0% {
+      filter: brightness(1.6);
+      transform: scale(1.08);
+    }
+    100% {
+      filter: none;
+      transform: none;
+    }
+  }
+  .spark {
+    position: absolute;
+    left: 50%;
+    top: 46%;
+    padding: 0.2rem 0.55rem;
+    border-radius: 999px;
+    background: var(--bg);
+    border: 1px solid var(--accent-2);
+    color: var(--ink);
+    font: 600 0.72rem "JetBrains Mono Variable", ui-monospace, monospace;
+    white-space: nowrap;
+    box-shadow: 0 6px 20px -6px rgba(236, 104, 19, 0.6);
+    animation: spark-rise 1.5s cubic-bezier(0.2, 0.7, 0.2, 1) forwards;
+  }
+  @keyframes spark-rise {
+    0% {
+      opacity: 0;
+      transform: translate(calc(-50% + var(--drift, 0px) * 0.2), 0) scale(0.7);
+    }
+    15% {
+      opacity: 1;
+    }
+    100% {
+      opacity: 0;
+      transform: translate(calc(-50% + var(--drift, 0px)), -9rem) scale(1);
+    }
+  }
+</style>
+
+<script>
+  const funnel = document.querySelector<HTMLElement>("[data-funnel]");
+  const root = document.getElementById("root");
+  const report = document.querySelector<HTMLElement>("[data-report]");
+  const sparks = document.querySelector<HTMLElement>("[data-sparks]");
+  if (funnel && root && report && sparks) {
+    const frames = [...funnel.querySelectorAll<SVGGElement>("[data-frame]")];
+    const still = matchMedia("(prefers-reduced-motion: reduce)");
+    const touch = matchMedia("(hover: none)");
+    const motion = { follow: 0, target: 0, spin: 0, velocity: 0 };
+    const read = () => {
+      const output = root.querySelector("output");
+      const reset = root.querySelectorAll("button")[2];
+      return { text: output?.textContent ?? "", tone: output?.className ?? "", reset: reset?.disabled ? "disabled" : "enabled" };
+    };
+    let phase: "mounting" | "clicked" = "mounting";
+    let before = read();
+
+    funnel.closest("section")?.addEventListener("pointermove", (event) => {
+      const box = funnel.getBoundingClientRect();
+      const dx = (event.clientX - box.left - box.width / 2) / box.width;
+      const dy = (event.clientY - box.top - box.height / 2) / box.height;
+      motion.target = Math.max(-1, Math.min(1, dx - dy)) * 16;
+    });
+
+    const draw = (time: number) => {
+      if (touch.matches) motion.target = Math.sin(time / 1500) * 9;
+      motion.follow += (motion.target - motion.follow) * 0.07;
+      motion.velocity = (motion.velocity - motion.spin * 0.05) * 0.88;
+      motion.spin += motion.velocity;
+      frames.forEach((frame, index) => {
+        const depth = (index + 1) / frames.length;
+        frame.setAttribute("transform", `rotate(${(index * 7 + (motion.follow + motion.spin) * depth).toFixed(2)} 200 200)`);
+      });
+      requestAnimationFrame(draw);
+    };
+    if (!still.matches) requestAnimationFrame(draw);
+
+    root.addEventListener(
+      "click",
+      (event) => {
+        if (!(event.target instanceof Element) || !event.target.closest("button:not(:disabled)")) return;
+        phase = "clicked";
+        before = read();
+        motion.velocity += 7;
+      },
+      { capture: true },
+    );
+
+    new MutationObserver((records) => {
+      if (phase === "mounting") return;
+      const output = root.querySelector("output");
+      if (output && records.length > 0) {
+        output.removeAttribute("data-lit");
+        void output.getBoundingClientRect();
+        output.setAttribute("data-lit", "");
+        setTimeout(() => output.removeAttribute("data-lit"), 600);
+      }
+      const after = read();
+      const changes = [
+        before.text === after.text ? "" : `text ${before.text} → ${after.text}`,
+        before.tone === after.tone ? "" : `class: '${before.tone}' → '${after.tone}'`,
+        before.reset === after.reset ? "" : `reset: ${before.reset} → ${after.reset}`,
+      ].filter((change) => change !== "");
+      report.textContent = `Last click wrote ${changes.length} ${changes.length === 1 ? "change" : "changes"}: ${changes.join(" · ")}. Nothing else in the page was written.`;
+      if (still.matches) return;
+      changes.forEach((change, index) => {
+        const spark = document.createElement("span");
+        spark.className = "spark";
+        spark.textContent = change;
+        spark.style.setProperty("--drift", `${(index - (changes.length - 1) / 2) * 70}px`);
+        spark.style.animationDelay = `${index * 90}ms`;
+        spark.addEventListener("animationend", () => spark.remove());
+        sparks.append(spark);
+      });
+    }).observe(root, { childList: true, characterData: true, subtree: true, attributes: true, attributeFilter: ["class", "disabled", "value"] });
+  }
+</script>

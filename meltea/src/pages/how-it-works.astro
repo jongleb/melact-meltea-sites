@@ -1,0 +1,247 @@
+---
+import Base from "../layouts/Base.astro";
+import PageHeader from "../components/PageHeader.astro";
+import DocLayout from "../components/DocLayout.astro";
+import DocSection from "../components/DocSection.astro";
+import Figure from "../components/Figure.astro";
+import Snippet from "../components/Snippet.astro";
+import Ornament from "../components/Ornament.astro";
+import { melteaCompiled, compiledWalk, selectorLeaf, fanoutAlert, serverWriter, transitionView, transitionCss } from "../data/samples";
+
+const toc = [
+  { id: "templates", label: "Templates and walks" },
+  { id: "refresh", label: "One === per local" },
+  { id: "fields", label: "Fields an update changes" },
+  { id: "remember", label: "Remembered values" },
+  { id: "fanout", label: "Fanout alerts" },
+  { id: "lists", label: "Lists and selectors" },
+  { id: "rows", label: "Compiled rows" },
+  { id: "pacing", label: "Pacing" },
+  { id: "inputs", label: "Controlled inputs" },
+  { id: "hydration", label: "Hydration" },
+  { id: "server", label: "Without a DOM" },
+  { id: "hot", label: "Hot reload" },
+  { id: "transitions", label: "Transitions" },
+  { id: "laws", label: "Laws" },
+];
+---
+
+<Base
+  title="How Meltea works: steeped at build time"
+  description="How meltea-ppx compiles views into templates with holes, reads update for the fields each message writes, and renders on a server without a DOM."
+>
+  <PageHeader eyebrow="How it works" title="Steeped at build time, poured at run time.">
+    <code>meltea-ppx</code> sees every view at build time, turns its static part into a DOM template and emits the update code for it. What remains at run
+    time is what the compiled code calls, and only that: cloning a template, moving keyed rows, delegating events. No virtual DOM, no tree diff, no reactive
+    graph.
+  </PageHeader>
+
+  <DocLayout toc={toc}>
+    <DocSection id="templates" kicker="The glass" title="The static part becomes a template, parsed once.">
+      <p>
+        The largest static subtree of every view becomes one HTML string, parsed once into a <code>&lt;template&gt;</code> and cloned with
+        <code>cloneNode(true)</code> per mount. Every dynamic part is a hole: a text, an attribute, a handler, a child.
+      </p>
+      <p>
+        The compiler knows the shape of every template, so it writes out how to reach each hole on a fresh clone, <code>firstChild</code> and
+        <code>nextSibling</code> only, sharing every step. The runtime keeps no paths and no tag tables.
+      </p>
+      <Snippet code={compiledWalk} lang="ocaml" title="the compiled walk" />
+    </DocSection>
+
+    <DocSection id="refresh" kicker="The pour" title="A refresh that writes only the holes whose values changed.">
+      <p>
+        For every template the compiler emits the update code, as Svelte and dartea do. Each local the view reads is checked with one <code>===</code>; only
+        the holes that read a changed one are evaluated and written. Pure views and immutable values make this exact: an unchanged reference is an unchanged
+        value.
+      </p>
+      <Figure
+        name="compiled"
+        alt="The counter in Meltea: you write the view in mlx; Meltea compiles it into a template tree of div, two buttons and an output whose text is the only hole; when + is clicked the update makes count 42, the compiled code compares count with its last value and writes 42 into that one text node; the grey static nodes get no DOM writes; there is no virtual DOM"
+      />
+      <p>The counter's view compiles to this JavaScript (names shortened):</p>
+      <Snippet code={melteaCompiled} lang="js" title="counter.js" />
+      <p>
+        On mount nothing is remembered yet, so every hole is evaluated once. A hole whose free variables are all physically unchanged is neither evaluated nor
+        compared, and a nested tree inside it is not built at all. An expression that reads mutable state is evaluated on every render.
+      </p>
+    </DocSection>
+
+    <DocSection id="fields" kicker="Who writes what" title="A message that changes nothing the view reads does not call the view.">
+      <p>
+        <code>meltea-ppx</code> reads <code>update</code> the way Svelte 4 reads assignments. For every message it finds which model fields the branch can
+        change: <code>{"{ model with draft }"}</code> changes <code>draft</code>, <code>model</code> changes nothing, anything it does not recognise changes
+        everything. It reads <code>view</code> the same way. Both become bit masks over field names, generated next to <code>update</code> and
+        <code>view</code>; nothing goes into your code.
+      </p>
+      <Figure
+        name="fields"
+        alt="Fields an update changes, in Meltea's TodoMVC: meltea-ppx reads update and finds what each message can change: Type changes field, Route changes filter, Add changes todos, field and next, Ignore changes nothing, and Edit, which it does not recognise, changes all fields. It reads view the same way: todos, field, editing and filter, never next. After Ignore nothing the view reads changed, so the view is not called; after Type the view runs and one === per local picks the holes to write"
+      />
+      <p>
+        <code>subscriptions</code> is read the same way: a program asks for them again only when a field they read changed. TodoMVC's
+        <code>fun _ -&gt; Sub.hash …</code> reads none, so it is asked once, at the start.
+      </p>
+    </DocSection>
+
+    <DocSection id="remember" kicker="Kept warm" title="Derived values are remembered by the fields they read.">
+      <p>
+        A <code>let</code> at the top of a view, <code>let shown = List.filter … model.items</code>, builds a new list on every call, and a new list fails the
+        <code>===</code> of every hole that reads it. <code>meltea-ppx</code> compiles such a <code>let</code> to <code>View.remember</code>, keyed by the
+        fields and locals it reads: when every input is the one the value was computed from, the old value comes back, the same object, and the holes that
+        read it are not evaluated.
+      </p>
+      <Figure
+        name="remember"
+        alt="Remembered values in a Meltea view: Type m changes only the draft field. Without remembering, let shown = List.filter over model.items builds a new list on every call, so the list hole sees a different value and checks all 1,000 rows. meltea-ppx compiles the let to View.remember keyed by model.filter and model.items; both are the same objects, so the old list comes back, the hole is skipped, and only the draft hole is written"
+      />
+    </DocSection>
+
+    <DocSection id="fanout" kicker="A word from the compiler" title="Fanout: when typing would make a list check every row.">
+      <p>
+        The same reading gives the compiler the whole path of an event, with no annotations: a handler sends a message, the message's branch of
+        <code>update</code> writes fields, and a list in <code>view</code> reads some of them. When a frequent event (<code>onInput</code>, key and pointer
+        moves, scroll, drag) sends a message whose fields a list reads, <code>meltea-ppx</code> says so at the handler, as an alert named
+        <code>fanout</code>:
+      </p>
+      <Snippet code={fanoutAlert} lang="plaintext" title="dune build" />
+      <Figure
+        name="fanout"
+        alt="Fanout in Meltea's TodoMVC: meltea-ppx follows a frequent event to the lists it reaches. The edit field's onInput sends Retype, whose branch of update writes editing, and the list in view reads todos, filter and editing, so every keystroke makes the list check all its rows; the compiler raises the alert fanout at the handler. The new-todo field's onInput sends Type, which writes field, which no list reads, so typing writes one hole and there is no alert. A key handler's literal branch such as Enter sends Add once and does not count"
+      />
+      <p>
+        Branches of a key handler matched on a literal key (<code>"Enter" -&gt; Add</code>) are single actions and do not count. The alert is a compiler
+        warning, not an error; <code>(handler [@alert "-fanout"])</code> keeps it quiet where the cost is accepted. It compiles to nothing.
+      </p>
+    </DocSection>
+
+    <DocSection id="lists" kicker="A tray of glasses" title="Rows render again only when what they read changed.">
+      <p>
+        <code>Html.list (List.map row items)</code> compiles to a keyed loop. As in Vue Vapor's selectors, the compiler splits a row into its item and its
+        leaves, the smallest pieces without JSX that read outer variables, for example
+      </p>
+      <Snippet code={selectorLeaf} lang="ocaml" title="a leaf" />
+      <p>
+        and emits a projection that evaluates only those. A row whose item is the same object and whose projection did not change is kept without calling the
+        row function: selecting a row of 1,000 renders two.
+      </p>
+      <Figure
+        name="selectors"
+        alt="Compiled selectors, after Vue Vapor: a row of Html.list (List.map …) reads its item and the outer value selected through one leaf without JSX; the compiler emits a projection that evaluates only that leaf for each row. When selected goes from Some 2 to Some 5 and the six items are the same objects, only rows 2 and 5 have a changed projection, so only they render, in place; the other four are kept without calling the row function"
+      />
+      <p>
+        Keyed rows that move are moved with <code>parentNode.moveBefore</code> where the browser has it, so a focused input, a playing video, an iframe or a
+        running CSS animation inside the row survive the move; elsewhere it is <code>insertBefore</code>. Swapping two rows of 1,000 is two moves.
+      </p>
+    </DocSection>
+
+    <DocSection id="rows" kicker="Light glasses" title="A compiled row is one record.">
+      <p>
+        When a row is a single lowercase element with a <code>key</code>, the compiler emits <code>View.rows</code>: one record per row with its root, scope
+        and holes, holes that are the bare nodes, and the last written values kept next to the guarded locals. In Meltea an event prop is a message, so the
+        compiler hoists one handler per site to module level; the element carries only the locals the message reads, and the shared handler builds the message
+        when the user clicks.
+      </p>
+      <Figure
+        name="row"
+        alt="What one row of a compiled list holds. Before: a child description with build and patch closures, a with_key wrapper, a refresh closure, a mounted child with three closures, a compiled state with a lend closure, a scope with its deps, a holes array with five hole records, two handler closures and a projection array. Now: one Mounted_row record with the root, the scope and the holes, the scope's deps also holding the last written values, the holes as bare nodes, the handler data as a property of the element, and the projection array; the template, one refresh per list, the key function and one handler per site are shared. Creating 1,000 rows allocates about 430 kB instead of 939, and 1,000 rows take 1.22 MB instead of 1.68"
+      />
+    </DocSection>
+
+    <DocSection id="pacing" kicker="Sip by sip" title="Pacing, as the Elm runtime does.">
+      <p>
+        A program draws at the next microtask after a message, so every click and keystroke is on screen before the browser paints. Pointer moves, scroll,
+        wheel and drag fire many times a frame; a message they send waits for the next animation frame, so a burst of moves is one draw. A click in between
+        draws at once.
+      </p>
+    </DocSection>
+
+    <DocSection id="inputs" kicker="What you see is the model" title="Controlled inputs always show the model.">
+      <p>
+        <code>value</code> and <code>checked</code> are properties the user changes too. They are controlled holes: after an <code>input</code> or
+        <code>change</code> event, and the redraw it causes, the hole puts its last written value back if the DOM differs. An update that rejects or filters
+        the text keeps the field in step with the model.
+      </p>
+    </DocSection>
+
+    <DocSection id="hydration" kicker="Served on the server, finished in the browser" title="Hydration in React's HTML format, with early events.">
+      <p>
+        <code>Program.render</code> writes HTML in the format of React's <code>renderToString</code>: no markers, a <code>&lt;!-- --&gt;</code> comment only
+        between two adjacent texts. <code>~start:Program.hydrate</code> takes it over in document order with code the compiler generates for each template
+        under its <code>-hydratable</code> flag: it keeps the server's elements and sets handlers. HTML that does not match the view is replaced by a normal
+        mount.
+      </p>
+      <Figure
+        name="hydration"
+        alt="Server rendering and hydration in React's format: on the server Program.render, renderToString or server-reason-react write plain HTML with no markers, and a comment only between two adjacent texts; in the browser, code the compiler generated for each template walks the server's nodes in document order, after an off-page clone has let the template's own refresh compute the values: the root with the same tag is taken over, texts and lists take exactly their nodes, and the buttons get their handlers; no element is added to the page, and HTML that does not match the view is cleared and mounted from scratch. Before the code arrives, the capture script in the page's head records clicks, typing and key presses with each target's value, and hydration delivers them in order"
+      />
+      <p>
+        Between the server's HTML appearing and the code hydrating it, a page looks alive and is not. <code>Melhole_server.capture</code>, a script of a few
+        hundred bytes for the page's <code>&lt;head&gt;</code>, records clicks, typing, key presses and submits with each target's <code>value</code> and
+        <code>checked</code> at that moment; the first hydration delivers them in order.
+      </p>
+    </DocSection>
+
+    <DocSection id="server" kicker="No DOM required" title="A server renderer in plain OCaml, natively or in Node.">
+      <p>
+        Under <code>meltea-ppx -server</code> a view compiles to code that writes its HTML: the static markup of each tree is joined at compile time into as
+        few strings as possible, and every dynamic part becomes one call into <code>melhole.server</code>, a library of plain OCaml that builds natively and
+        under Melange. For the counter:
+      </p>
+      <Snippet code={serverWriter} lang="ocaml" title="what -server emits" />
+      <Figure
+        name="served"
+        alt="One Meltea module, page.mlx, built twice. meltea-ppx for the browser compiles the view into a template parsed once and cloned, a walk to the output and a refresh that writes the text only when count changed. meltea-ppx -server compiles the same view into code that writes strings with no DOM, natively or in Node: the static markup joined into a few strings at compile time and one call per dynamic part, the class and the count. The server writes HTML in React's format, the same bytes natively and under Melange, and the browser build hydrates it"
+      />
+      <p>
+        <code>meltea.server</code> has the same <code>Html</code>, <code>Cmd</code>, <code>Sub</code> and <code>Program</code> modules as <code>meltea</code>,
+        so one module with the model, <code>update</code> and <code>view</code> builds twice. Floats are written as JavaScript's <code>String</code> writes
+        them, so a native server and the browser agree. The model goes into the page as data, so the browser starts from it without running
+        <code>init</code> again.
+      </p>
+    </DocSection>
+
+    <DocSection id="hot" kicker="Served hot" title="Hot reload keeps the model.">
+      <p>
+        A model lives outside the code, so new code can take it over, as elm-watch does. <code>meltea-ppx</code> writes a shape next to <code>update</code>:
+        a digest of the type declarations of its module. <code>~start:Program.hot</code> finds the program running on the root and starts from its model when
+        the shapes are the same, or from <code>init</code> when the types changed.
+      </p>
+      <Figure
+        name="hot"
+        alt="Hot reload in Meltea: a program runs on the root with its model and the shape of its module's types. After an edit, Vite runs main.mlx again, and Program.element with ~start:Program.hot finds the running program; when the new code's shape is the same, the model carries over and the new view and update show the old state; when the types changed, the program starts from init"
+      />
+    </DocSection>
+
+    <DocSection id="transitions" kicker="Graceful" title="Transitions and View Transitions.">
+      <p>
+        <code>Html.transition ~name</code> and <code>Html.transition_group ~name</code> animate what enters, leaves and moves with CSS classes, as Vue's
+        <code>&lt;Transition&gt;</code> and <code>&lt;TransitionGroup&gt;</code>; a list inside a group is still the compiled keyed loop with selectors. The
+        code lives in melhole's <code>Transition</code> module, so an app that does not animate does not carry it.
+      </p>
+      <Snippet code={transitionView} lang="ocaml" title="view.mlx" />
+      <Snippet code={transitionCss} lang="css" title="style.css" />
+      <Figure
+        name="transition"
+        alt="Transitions, as Vue's Transition and TransitionGroup, with name fade. Enter: in the patch the new row b gets fade-enter-from and fade-enter-active, two frames later fade-enter-to replaces fade-enter-from while CSS animates, and when the duration is up no classes are left. Leave: the removed row b is put back where it was with fade-leave-from and fade-leave-active, two frames later fade-leave-to, and when the duration is up it leaves the DOM. Move, in a group: row c went first, so after the patch the DOM is c a b but a transform shows every moved row where it was; two frames later the rows get fade-move and the transforms are cleared, so they slide to their new places; at the end no classes are left"
+      />
+      <p>
+        <code>Cmd.view_transition</code>, returned by an update, makes the next draw run inside <code>document.startViewTransition</code>, so the browser
+        animates the whole page from the old state to the new one; where the API is missing, the draw is as usual.
+      </p>
+    </DocSection>
+
+    <DocSection id="laws" kicker="Tested by laws" title="Property-based tests, not scenarios.">
+      <p>Accepted only with these holding:</p>
+      <ul class="glass-list space-y-3">
+        <li><strong>Equivalence:</strong> a guarded refresh renders the same DOM and runs the same effects as an unguarded one.</li>
+        <li><strong>Guard soundness:</strong> a hole is evaluated whenever one of its free variables changed.</li>
+        <li><strong>Guard economy:</strong> a hole whose free variables are all unchanged is not evaluated.</li>
+        <li><strong>Volatility:</strong> a hole that reads mutable state is evaluated on every render.</li>
+        <li>After any sequence of messages, the DOM is the view of <code>fold update init messages</code>.</li>
+        <li>Keyed loops reuse a row exactly when its item and projection are unchanged, and patching always shows what mounting from scratch shows.</li>
+      </ul>
+      <Ornament kind="divider" class="pt-6" />
+    </DocSection>
+  </DocLayout>
+</Base>

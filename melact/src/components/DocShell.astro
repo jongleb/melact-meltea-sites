@@ -1,0 +1,51 @@
+---
+interface Props {
+  toc: { id: string; label: string }[];
+}
+
+const { toc } = Astro.props;
+---
+
+<div class="wrap grid gap-12 py-16 sm:py-20 lg:grid-cols-[13rem_minmax(0,1fr)] lg:gap-16">
+  <aside class="hidden lg:block">
+    <nav class="sticky top-24" aria-label="On this page">
+      <p class="eyebrow">On this page</p>
+      <ul class="mt-4 space-y-1 border-l border-line">
+        {
+          toc.map((item) => (
+            <li>
+              <a
+                href={`#${item.id}`}
+                data-toc={item.id}
+                class="-ml-px block border-l border-transparent py-1.5 pl-4 text-sm text-ink-3 transition-colors hover:text-ink data-[active]:border-accent data-[active]:text-ink"
+              >
+                {item.label}
+              </a>
+            </li>
+          ))
+        }
+      </ul>
+    </nav>
+  </aside>
+  <div class="min-w-0 space-y-24">
+    <slot />
+  </div>
+</div>
+
+<script>
+  const links = new Map([...document.querySelectorAll<HTMLAnchorElement>("[data-toc]")].map((link) => [link.dataset.toc, link]));
+  const spy = new IntersectionObserver(
+    (entries) =>
+      entries
+        .filter((entry) => entry.isIntersecting)
+        .forEach((entry) => {
+          links.forEach((link) => link.removeAttribute("data-active"));
+          links.get(entry.target.id)?.setAttribute("data-active", "");
+        }),
+    { rootMargin: "-20% 0px -70% 0px" },
+  );
+  links.forEach((_, id) => {
+    const target = document.getElementById(id ?? "");
+    if (target) spy.observe(target);
+  });
+</script>

@@ -1,0 +1,77 @@
+---
+import { withBase } from "../data/paths";
+import Base from "../layouts/Base.astro";
+import Snippet from "../components/Snippet.astro";
+import PageHeader from "../components/PageHeader.astro";
+import DocShell from "../components/DocShell.astro";
+import DocSection from "../components/DocSection.astro";
+import { melactDune, melactFullCounter, mlxDialect, hydratablePps, tryIt } from "../data/samples";
+
+const toc = [
+  { id: "requirements", label: "Requirements" },
+  { id: "dune", label: "Switch the libraries" },
+  { id: "mlx", label: "mlx files" },
+  { id: "component", label: "A component" },
+  { id: "server", label: "Server rendering" },
+  { id: "repository", label: "From the repository" },
+];
+---
+
+<Base title="Get started with Melact" description="Build a reason-react app with Melact: two dune lines, the mlx dialect, and the repository's examples and tests.">
+  <PageHeader eyebrow="Get started" title="From reason-react to Melact in a few minutes.">
+    Melact is a library and a ppx for Melange. It keeps reason-react's modules, so you switch the libraries in <code>dune</code> and build.
+  </PageHeader>
+
+  <DocShell toc={toc}>
+    <DocSection id="requirements" eyebrow="Step 0" title="Requirements">
+      <p>You need OCaml ≥ 5.4, Melange ≥ 5.1, dune ≥ 3.16 and Node for the tests.</p>
+      <p>
+        Melact is not on opam yet: the opam packages <code>melhole</code>, <code>melact</code> and <code>melact-ppx</code> are the next step of the roadmap. Until
+        then, build it from <a href="https://github.com/jongleb/melact">github.com/jongleb/melact</a>.
+      </p>
+    </DocSection>
+
+    <DocSection id="dune" eyebrow="Step 1" title="Switch the libraries">
+      <p>Take a reason-react + Melange app and change two lines in its <code>dune</code> files:</p>
+      <Snippet code={melactDune} lang="diff" title="dune" />
+      <p>and get a build with no React in the bundle and no virtual DOM. <a href={withBase("migrating")}>Migrating</a> lists what is supported.</p>
+    </DocSection>
+
+    <DocSection id="mlx" eyebrow="Step 2" title="mlx, Reason or OCaml">
+      <p>
+        <code>melact-ppx</code> takes JSX in mlx, Reason and OCaml <code>[@JSX]</code>. For <code>.mlx</code> files, the dialect goes into
+        <code>dune-project</code>, as in Melact's own repository:
+      </p>
+      <Snippet code={mlxDialect} lang="scheme" title="dune-project" />
+    </DocSection>
+
+    <DocSection id="component" eyebrow="Step 3" title="A component compiles to one template">
+      <p>
+        A whole tree compiles to one template. This mlx counter is one <code>&lt;template&gt;</code> with six holes, the same as the hand-written one:
+      </p>
+      <Snippet code={melactFullCounter} lang="ocaml" title="counter.mlx" />
+      <p>
+        <code>ReactDOM.Client</code> clones the templates into the element, so the code that mounts your app stays as it is. The example lives in
+        <code>examples/counter-react</code>.
+      </p>
+    </DocSection>
+
+    <DocSection id="server" eyebrow="Optional" title="Server rendering">
+      <p>
+        <code>ReactDOMServer.renderToString</code> and <code>ReactDOM.Client.hydrateRoot</code> work as in React. The code that takes server HTML over costs about a
+        fifth of a small app's bundle, so it is generated only with the ppx's <code>-hydratable</code> flag:
+      </p>
+      <Snippet code={hydratablePps} lang="scheme" title="dune" />
+      <p>Without it the server's HTML shows until the app mounts over it.</p>
+    </DocSection>
+
+    <DocSection id="repository" eyebrow="Explore" title="From the repository">
+      <p>Build the libraries and examples, run the dual test suite, and open the counter:</p>
+      <Snippet code={tryIt} lang="console" title="shell" />
+      <p>
+        <code>vite.config.js</code> resolves the bare imports Melange emits (<code>melange.js/…</code>) inside each <code>_build/…/output</code> directory, for
+        vitest and for the examples alike.
+      </p>
+    </DocSection>
+  </DocShell>
+</Base>

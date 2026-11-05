@@ -1,0 +1,94 @@
+---
+import { withBase } from "../data/paths";
+import Base from "../layouts/Base.astro";
+import PageHeader from "../components/PageHeader.astro";
+import Snippet from "../components/Snippet.astro";
+import Ornament from "../components/Ornament.astro";
+import Figure from "../components/Figure.astro";
+import { melteaPin, melteaUse, mlxDialect, melteaCounter, viteRun, servedDune, servedCode, melteaTests } from "../data/samples";
+---
+
+<Base
+  title="Get started with Meltea"
+  description="Pin Meltea, add it to a dune file, write a counter in mlx and run it with Vite; then build the same module for a server."
+>
+  <PageHeader eyebrow="Get started" title="Brew your first program.">
+    You need OCaml ≥ 5.4, Melange ≥ 5.1 and dune ≥ 3.16, and Node for the tests. Five steps from an empty glass to a counter that writes one text
+    node per click.
+  </PageHeader>
+
+  <section class="wrap py-16 sm:py-20">
+    <ol class="relative space-y-16 border-l border-dashed border-line-strong pl-8 sm:pl-12">
+      <li class="reveal relative">
+        <Ornament kind="glass" class="absolute top-0 -left-[2.65rem] h-8 w-6 sm:-left-[3.65rem]" />
+        <p class="eyebrow">Step one</p>
+        <h2 class="display mt-2 text-[2rem] leading-tight sm:text-[2.5rem]">Pin the packages.</h2>
+        <p class="lede mt-3 max-w-2xl">Until the opam release, pin <code>melhole</code>, <code>meltea</code> and <code>meltea-ppx</code> from the repository.</p>
+        <Snippet class="mt-6" code={melteaPin} lang="console" title="shell" />
+      </li>
+
+      <li class="reveal relative">
+        <Ornament kind="glass" class="absolute top-0 -left-[2.65rem] h-8 w-6 sm:-left-[3.65rem]" />
+        <p class="eyebrow">Step two</p>
+        <h2 class="display mt-2 text-[2rem] leading-tight sm:text-[2.5rem]">Add it to a dune file.</h2>
+        <p class="lede mt-3 max-w-2xl">A <code>melange.emit</code> stanza with the library and the ppx:</p>
+        <Snippet class="mt-6" code={melteaUse} lang="scheme" title="dune" />
+        <p class="lede mt-6 max-w-2xl">
+          and <code>(dialect (name mlx) …)</code> in <code>dune-project</code> for <code>.mlx</code> files. The repository's own <code>dune-project</code>
+          declares it like this:
+        </p>
+        <Snippet class="mt-6" code={mlxDialect} lang="scheme" title="dune-project" />
+      </li>
+
+      <li class="reveal relative">
+        <Ornament kind="glass" class="absolute top-0 -left-[2.65rem] h-8 w-6 sm:-left-[3.65rem]" />
+        <p class="eyebrow">Step three</p>
+        <h2 class="display mt-2 text-[2rem] leading-tight sm:text-[2.5rem]">Write a model, an update and a view.</h2>
+        <p class="lede mt-3 max-w-2xl">
+          <code>onClick=Increment</code> sends a message. <code>Program.sandbox</code> runs the program on a root element.
+        </p>
+        <Snippet class="mt-6" code={melteaCounter} lang="ocaml" title="counter.mlx" />
+      </li>
+
+      <li class="reveal relative">
+        <Ornament kind="glass" class="absolute top-0 -left-[2.65rem] h-8 w-6 sm:-left-[3.65rem]" />
+        <p class="eyebrow">Step four</p>
+        <h2 class="display mt-2 text-[2rem] leading-tight sm:text-[2.5rem]">Build, test and serve it.</h2>
+        <p class="lede mt-3 max-w-2xl">
+          In the repository, the examples run under Vite; its config resolves the bare imports Melange emits inside each <code>_build/…/output</code>
+          directory. With <code>~start:Program.hot</code>, an edit shows the new view of the old model.
+        </p>
+        <Snippet class="mt-6" code={melteaTests} lang="console" title="shell" />
+        <Snippet class="mt-4" code={viteRun} lang="console" title="shell" />
+      </li>
+
+      <li class="reveal relative">
+        <Ornament kind="glass" class="absolute top-0 -left-[2.65rem] h-8 w-6 sm:-left-[3.65rem]" />
+        <p class="eyebrow">Step five</p>
+        <h2 class="display mt-2 text-[2rem] leading-tight sm:text-[2.5rem]">Serve it from a server, too.</h2>
+        <p class="lede mt-3 max-w-2xl">
+          One module with the model, <code>update</code> and <code>view</code> builds for both sides: natively for the server against
+          <code>meltea.server</code>, and for the browser with the hydration code compiled in.
+        </p>
+        <Snippet class="mt-6" code={servedDune} lang="scheme" title="dune" />
+        <Snippet class="mt-4" code={servedCode} lang="ocaml" title="server.ml · main.mlx" />
+        <Figure
+          class="mt-8"
+          name="served"
+          alt="One Meltea module, page.mlx, built twice. meltea-ppx for the browser compiles the view into a template parsed once and cloned, a walk to the output and a refresh that writes the text only when count changed. meltea-ppx -server compiles the same view into code that writes strings with no DOM, natively or in Node: the static markup joined into a few strings at compile time and one call per dynamic part, the class and the count. The server writes HTML in React's format, the same bytes natively and under Melange, and the browser build hydrates it"
+        />
+      </li>
+    </ol>
+
+    <div class="reveal card relative mt-20 overflow-hidden p-8 text-center sm:p-12">
+      <div class="glow pointer-events-none absolute inset-0" aria-hidden="true"></div>
+      <Ornament kind="divider" class="relative mx-auto max-w-sm" />
+      <p class="display relative mt-6 text-[2.2rem] leading-tight sm:text-[2.8rem]">Afiyet olsun.</p>
+      <p class="lede relative mx-auto mt-3 max-w-xl">From here, the guide walks from the counter to TodoMVC: commands, subscriptions, lists, routing and transitions.</p>
+      <div class="relative mt-8 flex flex-wrap justify-center gap-3">
+        <a href={withBase("/guide")} class="btn-primary">Read the guide <span aria-hidden="true">→</span></a>
+        <a href={withBase("/how-it-works")} class="btn-ghost">How it works</a>
+      </div>
+    </div>
+  </section>
+</Base>

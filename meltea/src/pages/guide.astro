@@ -1,0 +1,180 @@
+---
+import Base from "../layouts/Base.astro";
+import PageHeader from "../components/PageHeader.astro";
+import DocLayout from "../components/DocLayout.astro";
+import DocSection from "../components/DocSection.astro";
+import Snippet from "../components/Snippet.astro";
+import Figure from "../components/Figure.astro";
+import { melteaCounter, todoRow, transitionView, transitionCss, servedCode } from "../data/samples";
+
+const toc = [
+  { id: "counter", label: "The counter" },
+  { id: "view", label: "Views in mlx" },
+  { id: "events", label: "Events" },
+  { id: "lists", label: "Lists and keys" },
+  { id: "commands", label: "Commands: Cmd" },
+  { id: "subscriptions", label: "Subscriptions: Sub" },
+  { id: "program", label: "Program" },
+  { id: "composition", label: "Html.map and Html.memo" },
+  { id: "transitions", label: "Transitions" },
+  { id: "server", label: "Server and hydration" },
+  { id: "api", label: "API" },
+];
+
+const api = [
+  {
+    module: "Program",
+    gives:
+      "sandbox ~init ~update ~view root, element ~init ~update ~view ~subscriptions root, dispatch, flush, stop; render ~view model for the server and ~start:Program.hydrate to take its HTML over",
+  },
+  { module: "Html", gives: "text, int, float, none, list, keyed, map, memo (Elm's lazy), transition and transition_group (~name, ?duration)" },
+  {
+    module: "Cmd",
+    gives:
+      "none, batch, map, message, perform (a promise), focus (an element by id, after the next draw), port (a value out to JavaScript), view_transition (the next draw inside document.startViewTransition)",
+  },
+  { module: "Sub", gives: "none, batch, map, every, hash (the URL fragment)" },
+];
+---
+
+<Base title="The Meltea guide: from a counter to TodoMVC" description="Messages, update, views in mlx, events, keyed lists, Cmd, Sub, Program, Html.map, transitions and hydration in Meltea.">
+  <PageHeader eyebrow="Guide" title="From a counter to TodoMVC, one glass at a time.">
+    Meltea is the Elm architecture in OCaml. If you have written Elm, everything here will feel familiar: the same four pieces, plain values for effects,
+    and a compiler that does the rest.
+  </PageHeader>
+
+  <DocLayout toc={toc}>
+    <DocSection id="counter" kicker="The first glass" title="A model, messages, update and view.">
+      <p>
+        The model is any OCaml value; here it is an <code>int</code>. Messages are a variant. <code>update</code> is a pure function from a message and the
+        model to the next model, and <code>view</code> is a pure function from the model to HTML, written in mlx.
+      </p>
+      <Snippet code={melteaCounter} lang="ocaml" title="counter.mlx" />
+      <p>
+        No hooks and no components with state: an event handler is a message. The view compiles to a template with holes and a refresh that writes only what
+        changed, so a click on <code>+</code> writes one text node.
+      </p>
+    </DocSection>
+
+    <DocSection id="view" kicker="Pouring HTML" title="Views in mlx.">
+      <p>
+        mlx is OCaml with JSX. Lowercase tags are DOM elements; children in parentheses are OCaml expressions of type <code>Html.t</code>:
+        <code>Html.text</code>, <code>Html.int</code>, <code>Html.float</code>, <code>Html.none</code>, <code>Html.list</code> and <code>Html.keyed</code>.
+      </p>
+      <p>
+        Attributes are the familiar DOM props (<code>className</code>, <code>value</code>, <code>checked</code>, <code>disabled</code>, …) with their OCaml
+        types; a typo is a compile error that names the element. <code>disabled=(count = 0)</code> is a <code>bool</code> expression like any other.
+      </p>
+    </DocSection>
+
+    <DocSection id="events" kicker="Ordering" title="Events send messages.">
+      <p>
+        <code>onClick=Increment</code> sends a message. <code>onInput</code> and <code>onKeyDown</code> take a function of the value or the key,
+        <code>onCheck</code> of the checked state. Handlers are delegated to <code>document</code>, one listener per event type.
+      </p>
+      <p>
+        <code>value</code> and <code>checked</code> always show the model: after typing, the field gets the model's value back if the update did not take
+        the input. A message sent by a click or a key is drawn at the next microtask; pointer moves, scroll and wheel are drawn once per frame.
+      </p>
+    </DocSection>
+
+    <DocSection id="lists" kicker="A full tray" title="Lists and keys.">
+      <p>
+        <a href="https://github.com/jongleb/meltea">examples/todomvc</a> is the full TodoMVC: routing by <code>#/active</code> and <code>#/completed</code>,
+        editing with Enter, Escape and blur, <code>localStorage</code> through jsonkit's <code>[@@deriving json]</code>. A row:
+      </p>
+      <Snippet code={todoRow} lang="ocaml" title="todomvc.mlx" />
+      <p>
+        <code>Html.list (List.map row items)</code> with a <code>key</code> on each row is a keyed loop with selectors: a row is rendered again only when its
+        item is another object or a piece of it that reads outer values changed.
+      </p>
+    </DocSection>
+
+    <DocSection id="commands" kicker="Asking for more" title="Commands are values.">
+      <p>
+        <code>Cmd</code> and <code>Sub</code> are values that describe effects; <code>Program</code> runs them. An update can return a command:
+        <code>Cmd.message</code>, <code>Cmd.perform</code> for a promise, <code>Cmd.focus</code> for an element by id after the next draw, <code>Cmd.port</code>
+        for a value out to JavaScript, and <code>Cmd.view_transition</code> to draw the next change inside the browser's View Transitions.
+        <code>Cmd.batch</code> and <code>Cmd.map</code> combine them.
+      </p>
+      <p>
+        In TodoMVC the update asks for focus with <code>Cmd.focus</code>, <code>main.mlx</code> saves through <code>Cmd.port</code>, and the route comes from
+        <code>Sub.hash</code>.
+      </p>
+    </DocSection>
+
+    <DocSection id="subscriptions" kicker="Listening" title="Subscriptions.">
+      <p>
+        <code>Sub.every</code> and <code>Sub.hash</code> (the URL fragment) turn the outside world into messages; <code>Sub.batch</code> and
+        <code>Sub.map</code> combine them. The compiler reads <code>subscriptions</code> as it reads <code>view</code>: a program asks for them again only
+        after a draw that changed a field they read.
+      </p>
+    </DocSection>
+
+    <DocSection id="program" kicker="The tea house" title="Program runs it all.">
+      <p>
+        <code>Program.sandbox ~init ~update ~view root</code> runs a program with no effects. <code>Program.element ~init ~update ~view ~subscriptions
+        root</code> adds commands and subscriptions. <code>dispatch</code>, <code>flush</code> and <code>stop</code> drive a running program from outside.
+      </p>
+      <p>
+        <code>~start:Program.hot</code> with Vite's HMR shows an edit as the new view of the old model, and starts from <code>init</code> when the module's
+        types changed. <code>~start:Program.hydrate</code> takes over HTML a server wrote.
+      </p>
+    </DocSection>
+
+    <DocSection id="composition" kicker="Glasses within glasses" title="Html.map and Html.memo.">
+      <p>
+        <code>Html.map</code> and <code>Html.memo</code> work as in Elm: <code>map</code> turns the messages of a piece of view into the messages of its
+        parent, and <code>memo</code> is Elm's <code>lazy</code>. Laws check that both behave as in Elm.
+      </p>
+    </DocSection>
+
+    <DocSection id="transitions" kicker="Graceful" title="Transitions.">
+      <p>
+        <code>Html.transition ~name</code> and <code>Html.transition_group ~name</code> animate what enters, leaves and moves, as Vue's
+        <code>&lt;Transition&gt;</code> and <code>&lt;TransitionGroup&gt;</code>. The time is <code>~duration</code> milliseconds, or the element's own
+        animations. The first render does not animate.
+      </p>
+      <Snippet code={transitionView} lang="ocaml" title="view.mlx" />
+      <Snippet code={transitionCss} lang="css" title="style.css" />
+    </DocSection>
+
+    <DocSection id="server" kicker="Served on a server" title="Server rendering and hydration.">
+      <p>
+        <code>Program.render</code> writes HTML in React's format and <code>~start:Program.hydrate</code> takes it over in the browser; compile with
+        <code>(pps melange.ppx meltea-ppx -hydratable)</code> to include the code that does it. <code>Melhole_server.capture</code> in the page's head keeps
+        the clicks and typing made before the code arrives, and hydration delivers them.
+      </p>
+      <Snippet code={servedCode} lang="ocaml" title="server.ml · main.mlx" />
+      <Figure
+        name="hydration"
+        alt="Server rendering and hydration in React's format: on the server Program.render, renderToString or server-reason-react write plain HTML with no markers, and a comment only between two adjacent texts; in the browser, code the compiler generated for each template walks the server's nodes in document order, after an off-page clone has let the template's own refresh compute the values: the root with the same tag is taken over, texts and lists take exactly their nodes, and the buttons get their handlers; no element is added to the page, and HTML that does not match the view is cleared and mounted from scratch. Before the code arrives, the capture script in the page's head records clicks, typing and key presses with each target's value, and hydration delivers them in order"
+      />
+    </DocSection>
+
+    <DocSection id="api" kicker="The menu" title="Four modules.">
+      <div class="tile-frame">
+        <div class="overflow-x-auto bg-card">
+          <table class="w-full min-w-[34rem] text-left text-sm">
+            <thead class="bg-bg-soft">
+              <tr>
+                <th scope="col" class="px-5 py-3 font-medium text-ink-3">module</th>
+                <th scope="col" class="px-5 py-3 font-medium text-ink-3">what it gives</th>
+              </tr>
+            </thead>
+            <tbody>
+              {
+                api.map((row) => (
+                  <tr class="border-t border-line align-top">
+                    <th scope="row" class="px-5 py-4 font-mono font-semibold whitespace-nowrap text-brass">{row.module}</th>
+                    <td class="px-5 py-4 font-mono text-[0.78rem] leading-relaxed text-ink-2">{row.gives}</td>
+                  </tr>
+                ))
+              }
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </DocSection>
+  </DocLayout>
+</Base>

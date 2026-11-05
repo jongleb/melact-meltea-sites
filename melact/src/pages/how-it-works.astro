@@ -1,0 +1,221 @@
+---
+import Base from "../layouts/Base.astro";
+import Figure from "../components/Figure.astro";
+import Snippet from "../components/Snippet.astro";
+import PageHeader from "../components/PageHeader.astro";
+import DocShell from "../components/DocShell.astro";
+import DocSection from "../components/DocSection.astro";
+import { guardedRefresh, hookKeys, compiledWalk, selectorLeaf } from "../data/samples";
+
+const toc = [
+  { id: "no-vdom", label: "No virtual DOM" },
+  { id: "templates", label: "Templates and holes" },
+  { id: "refresh", label: "One === per local" },
+  { id: "lists", label: "Keyed lists" },
+  { id: "components", label: "Components" },
+  { id: "hooks", label: "Typed hooks" },
+  { id: "events", label: "Events" },
+  { id: "controlled", label: "Controlled inputs" },
+  { id: "server", label: "Server and hydration" },
+  { id: "rules", label: "The one rule" },
+];
+
+const holes = [
+  { hole: "text", written: "node.data = s" },
+  { hole: "attribute", written: "setAttribute / removeAttribute (None removes)" },
+  { hole: "property", written: "el[name] = v (value, checked, innerHTML)" },
+  { hole: "style", written: "the old properties cleared, the new ones set" },
+  { hole: "handler", written: "guarded by the locals it reads, like any hole; Melact replaces the closure on the element" },
+  { hole: "ref", written: "the new callback is called with the element" },
+  { hole: "child", written: "patched recursively: a template, a list, a component" },
+];
+---
+
+<Base title="How Melact works" description="How melact-ppx compiles reason-react JSX into DOM templates with holes and a guarded refresh, with no virtual DOM.">
+  <PageHeader eyebrow="How it works" title="Melact only looks like React.">
+    The surface is reason-react's: components are functions, hooks keep state, a state change calls the component again. Underneath, the view is compiled into
+    templates with holes, and per template a generated refresh that guards every hole by the values it is computed from. It relies on the contract React
+    already sets, the Rules of React: rendering is a pure function of props, state and context.
+  </PageHeader>
+
+  <DocShell toc={toc}>
+    <DocSection id="no-vdom" eyebrow="01" title="The DOM writes are the same. The tree copy disappears.">
+      <Figure
+        name="vdom"
+        alt="One click in the counter, from 1 to 2. React builds a new tree of 5 elements and 5 props objects, walks it against the previous tree and writes one text. Melact keeps the markup as a template parsed once, builds one array of 6 hole values, compares each with === and writes the same one text"
+        caption="No virtual DOM: the DOM writes are the same, what disappears is the copy of the tree that React rebuilds and walks on every render."
+      />
+    </DocSection>
+
+    <DocSection id="templates" eyebrow="02" title="JSX becomes a template and a hole array.">
+      <Figure
+        name="pipeline"
+        alt="mlx JSX is compiled into a template hoisted to module level and a walk to its three holes: b is the first child of the div, o the next sibling of b, and the text goes at the end of o; the template is cloned once per mount; every render runs the compiled refresh, which checks count and tone and writes only the holes that read a changed one"
+      />
+      <ul>
+        <li>
+          <strong>Template.</strong> The largest static subtree of every JSX site (lowercase tags, literal attributes, literal text) becomes one HTML string, parsed
+          once into a <code>&lt;template&gt;</code> and cloned with <code>cloneNode(true)</code> per mount.
+        </li>
+        <li>
+          <strong>Holes.</strong> Each dynamic attribute, handler, text or child is a hole: an element, or a parent and the node to insert before. The compiler
+          emits the walk to them, <code>firstChild</code> and <code>nextSibling</code> only, as Svelte does; it runs on the fresh clone before anything is inserted,
+          so nothing shifts.
+        </li>
+        <li>
+          <strong>Refresh.</strong> For every template the compiler also emits a refresh function. It checks each local the view reads with one <code>===</code>,
+          and evaluates and writes only the holes that read a changed one.
+        </li>
+      </ul>
+      <p>The compiler knows the shape of every template, so it writes out how to reach each hole on a fresh clone, sharing every step. The runtime keeps no paths and no tag tables.</p>
+      <Snippet code={compiledWalk} lang="ocaml" title="compiled walk" />
+    </DocSection>
+
+    <DocSection id="refresh" eyebrow="03" title="A render is one === per local.">
+      <Figure
+        name="patch"
+        alt="The compiled refresh of counter-react on a click from 41 to 42: count changed, so the text and disabled holes run and the text node gets 42; tone and initial are the same, so the class hole is not even evaluated; handlers are swapped on the element without DOM calls"
+      />
+      <p>
+        Nothing is built to be compared afterwards. For each hole the ppx computes its free variables, scope-aware, from the AST, and emits per template site a
+        refresh function:
+      </p>
+      <Snippet code={guardedRefresh} lang="ocaml" title="generated refresh" />
+      <p>
+        <code>View.check scope k value</code> compares <code>value</code> with the <code>k</code>-th remembered dependency and stores it. A hole whose free
+        variables are all physically unchanged is neither evaluated nor compared, and a nested JSX tree inside it is not built at all: <code>lazy</code> everywhere,
+        without writing it.
+      </p>
+      <div class="overflow-x-auto rounded-2xl border border-line">
+        <table class="w-full min-w-[30rem] text-left text-sm">
+          <thead class="bg-bg-soft">
+            <tr><th scope="col" class="px-4 py-2.5 font-medium text-ink-3">hole</th><th scope="col" class="px-4 py-2.5 font-medium text-ink-3">written with</th></tr>
+          </thead>
+          <tbody>
+            {
+              holes.map((row) => (
+                <tr class="border-t border-line">
+                  <th scope="row" class="px-4 py-2.5 font-mono font-medium text-ink">{row.hole}</th>
+                  <td class="px-4 py-2.5 font-mono text-[0.8rem] text-ink-2">{row.written}</td>
+                </tr>
+              ))
+            }
+          </tbody>
+        </table>
+      </div>
+      <p>
+        <strong>Never guarded:</strong> an expression that reads mutable state (<code>!r</code>, <code>r.contents</code>, <code>r.current</code>,
+        <code>Js.Date</code>, <code>Js.Math.random</code>, an assignment, or a variable bound by <code>for</code>/<code>while</code>) runs on every render; an
+        expression with no free variables is constant and evaluated on mount only.
+      </p>
+    </DocSection>
+
+    <DocSection id="lists" eyebrow="04" title="Keyed lists move as little as possible.">
+      <Figure
+        name="reconcile"
+        alt="Keyed reconcile: the common prefix a and suffix f stay, c and d form the longest increasing run of old positions and stay, b and e are moved with one insertBefore each. Measured on 1,000 rows: swap 2 moves, reverse 999 moves, remove one keeps 999 rows"
+      />
+      <p>
+        <code>Reconcile.plan</code> takes the old and new keys and returns a step per new entry: <code>Keep</code>, <code>Move</code> or <code>Create</code>, plus
+        the old entries to drop. It tries the cheap cases first: common ends (a swapped first and last row is two moves), an empty side, then a small hash table
+        from old keys to positions and the longest increasing run. When the keys keep their order the loop skips the plan and patches rows in place.
+      </p>
+      <p>
+        <code>React.array (Array.map row items)</code> compiles to a keyed loop. As in Vue Vapor's selectors, the compiler splits a row into its item and its
+        leaves, the smallest pieces without JSX that read outer variables, for example
+      </p>
+      <Snippet code={selectorLeaf} lang="ocaml" title="a leaf" />
+      <p>
+        and emits a projection that evaluates only those. A row whose item is the same object and whose projection did not change is kept without calling the row
+        function: selecting one row of 1,000 renders two.
+      </p>
+      <p>
+        A keyed row that moves is moved with <code>parentNode.moveBefore</code> where the browser has it, so a focused input, a playing video, an iframe or a
+        running CSS animation inside the row survive the move; elsewhere it is <code>insertBefore</code>.
+      </p>
+    </DocSection>
+
+    <DocSection id="components" eyebrow="05" title="Components re-render where state changed.">
+      <Figure name="updates" alt="A state update in TodoList re-renders TodoList only; App and Header are not visited; Rows whose props are physically equal are skipped" />
+      <p>
+        Each <code>[@react.component]</code> gets an identity at module level. Its props are compared one by one with <code>===</code>. A setter marks its instance
+        dirty, and one microtask renders the dirty instances parents first. Layout effects run right after their instance's patch. Passive effects run after the
+        whole flush, and cleanups go children before parents.
+      </p>
+      <p>
+        By the Rules of React every hook is named <code>use…</code>, so <code>melact-ppx</code> sees whether a component's body can call one. A component that calls
+        none compiles to <code>View.pure</code>, a child that keeps the component's identity and props and nothing else. Only components that call hooks get an
+        instance with hook slots, effects and a place in the scheduler.
+      </p>
+    </DocSection>
+
+    <DocSection id="hooks" eyebrow="06" title="Hooks are typed by their call site.">
+      <Figure
+        name="hooks"
+        alt="melact-ppx gives every hook call site its own Type.Id key, hoisted to module level; the instance stores each slot with the key that made it; reading a slot checks provably_equal, so values come back typed, and a hook called out of order raises an error instead of returning a wrong value"
+      />
+      <p>
+        Hooks keep state in slots read in call order, as in React. Instead of casting what a slot holds, <code>melact-ppx</code> gives every hook call site its own
+        key, a <code>Type.Id</code> created once at module level, and passes it as a hidden first argument:
+      </p>
+      <Snippet code={hookKeys} lang="ocaml" title="melact-ppx" />
+      <p>
+        A slot stores its value with the key that made it, so reading it back is a typed <code>Type.Id.provably_equal</code>, with no <code>Obj.magic</code>. A hook
+        inside an <code>if</code>, a <code>match</code>, a loop or a callback raises the <code>hook</code> alert at build time, reported by the OCaml type checker
+        itself; at run time a hook called out of order raises <em>"hooks were called in a different order"</em> instead of handing back the wrong value.
+      </p>
+    </DocSection>
+
+    <DocSection id="events" eyebrow="07" title="Events are delegated.">
+      <Figure
+        name="events"
+        alt="One listener per event type on the document; on a click melact walks from the target up through parent nodes and calls the handler stored on each element; replacing a handler is one property write"
+      />
+      <p>
+        The 22 delegated types are the bubbling set Solid uses: <code>click</code>, <code>input</code>, <code>keydown</code>, <code>focusin</code>,
+        <code>pointer*</code>, <code>mouse*</code>, <code>touch*</code> and the rest. Any other event gets one listener on its element that reads the same property,
+        so replacing its handler is free too.
+      </p>
+      <p>
+        A handler prop compiles to <code>fun event -&gt; handler (React.Event.ofNative event)</code>: <code>ofNative</code> is the identity, and the handler's own type
+        picks the family. Every accessor reads the native event, and delegation sets <code>currentTarget</code> to the element whose handler runs, as React does.
+      </p>
+    </DocSection>
+
+    <DocSection id="controlled" eyebrow="08" title="Inputs show the state.">
+      <Figure
+        name="controlled"
+        alt="Controlled inputs: the user types milk and presses Enter in the same tick; the model's field goes from empty to milk and back to empty, so the redraw sees an unchanged value and writes nothing. A guard alone leaves milk in the field. In Meltea and Melact value and checked are controlled holes: after an input or change event and the redraw it causes, the hole writes its last value back if the DOM differs, as React does"
+      />
+      <p>
+        A guard compares a value with the one written last, but the user changes <code>value</code> and <code>checked</code> too. So these two props are controlled
+        holes: after an <code>input</code> or <code>change</code> event, and the redraw it causes, the hole writes its last value back if the DOM differs. One law
+        types into such a field and checkbox under React 18 and under Melact and compares the page.
+      </p>
+    </DocSection>
+
+    <DocSection id="server" eyebrow="09" title="Server rendering and hydration, in React's format.">
+      <Figure
+        name="hydration"
+        alt="Server rendering and hydration in React's format: on the server Program.render, renderToString or server-reason-react write plain HTML with no markers, and a comment only between two adjacent texts; in the browser, code the compiler generated for each template walks the server's nodes in document order, after an off-page clone has let the template's own refresh compute the values: the root with the same tag is taken over, texts and lists take exactly their nodes, and the buttons get their handlers; no element is added to the page, and HTML that does not match the view is cleared and mounted from scratch. Before the code arrives, the capture script in the page's head records clicks, typing and key presses with each target's value, and hydration delivers them in order"
+      />
+      <p>
+        <code>ReactDOMServer.renderToString</code> writes HTML in the format of React's own <code>renderToString</code>, with no markers, so a Melact app can also
+        render on a native OCaml server with <a href="https://github.com/ml-in-barcelona/server-reason-react">server-reason-react</a>.
+        <code>ReactDOM.Client.hydrateRoot</code> takes that HTML over in document order with code the compiler generates for each template under its
+        <code>-hydratable</code> flag: it keeps the server's elements and sets handlers. HTML that does not match the view is replaced by a normal mount.
+      </p>
+      <p>
+        <code>Melhole_server.capture</code>, a script for the page's head, records what the user does before the code arrives, with each field's value at that
+        moment, and hydration delivers it in order.
+      </p>
+    </DocSection>
+
+    <DocSection id="rules" eyebrow="10" title="Mutate in place, and nothing updates.">
+      <p>
+        Change detection is physical equality, exactly as in Elm. Code that mutates an array or a record in place and passes the same reference back will not
+        re-render that part. Idiomatic OCaml builds new values, so this rarely matters, but it is a rule rather than an optimisation.
+      </p>
+    </DocSection>
+  </DocShell>
+</Base>
